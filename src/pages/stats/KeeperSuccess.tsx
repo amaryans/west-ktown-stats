@@ -131,12 +131,12 @@ export default function KeeperSuccess() {
       {historyData && (
         <>
           <div className="muted small">
-            Every keeper in the league&apos;s history, judged three ways: what the keeper cost on
-            draft day against ADP (<strong>draft value</strong>), where the player finished that
-            season against that price (<strong>vs price</strong>), and how much of the team&apos;s
-            scoring he carried (<strong>impact</strong>). The <strong>keeper score</strong> (0–100)
-            is a percentile against every keeper here, averaged over the parts that are known.{' '}
-            <MethodDetails />
+            Every keeper in the league&apos;s history, judged three ways: how much less the keeper
+            cost than the player&apos;s draft price (<strong>draft value</strong>), where the player
+            finished that season against that price (<strong>vs price</strong>), and how much of the
+            team&apos;s scoring he carried (<strong>impact</strong>). The{' '}
+            <strong>keeper score</strong> (0–100) is a percentile against every keeper here,
+            averaged over the parts that are known. <MethodDetails />
           </div>
 
           {raw.loading && <div className="loading">{raw.progress ?? 'Loading…'}</div>}
@@ -270,8 +270,10 @@ function MethodDetails() {
       </summary>
       <ul style={{ marginTop: '0.4rem' }}>
         <li>
-          <strong>Draft value</strong> = ADP − pick used. A player going 30th in drafts and kept
-          with the 80th pick is +50 picks. ADP comes from the &quot;ADP&quot; stat for that season.
+          <strong>Draft value</strong> = pick used − ADP, so positive is good: a player going 30th
+          in drafts and kept with the 80th pick is +50 picks, kept for less than his draft price.
+          Negative means the keeper cost more than he would have in the draft. ADP comes from the
+          &quot;ADP&quot; stat for that season.
         </li>
         <li>
           <strong>Finish</strong> ranks every player drafted that year by regular-season points in
@@ -314,7 +316,7 @@ function ManagersTable({
       {
         key: 'draft',
         label: 'Draft value',
-        title: 'Average draft value (picks)',
+        title: 'Average draft value (picks saved against ADP)',
         get: (m) => m.avgDraftValue,
         className: 'num',
       },
@@ -430,6 +432,7 @@ function KeepersTable({ rows, meId }: { rows: KeeperOutcome[]; meId: string | nu
       {
         key: 'draft',
         label: 'Draft value',
+        title: 'Picks saved against ADP',
         get: (o) => o.draftValue,
         className: 'num',
       },

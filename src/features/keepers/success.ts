@@ -2,7 +2,8 @@
  * Keeper success: how well each keeper decision worked out, judged three ways.
  *
  *  - Draft value: the pick a keeper cost against where the player was going in
- *    drafts that year (ADP). Positive means the keeper was a bargain on draft day.
+ *    drafts that year (ADP), as pick used minus ADP. Positive means the keeper
+ *    cost less than the player's draft price: a bargain on draft day.
  *  - Performance: where the player finished that season, ranked by points among
  *    every player drafted in the league, against the pick they cost. Positive
  *    means he outperformed his price.
@@ -73,7 +74,7 @@ export interface KeeperOutcome {
   keepRound: number
   keepPick: number
   adp: number | null
-  /** ADP minus the pick used: positive means a draft-day bargain. */
+  /** Pick used minus ADP: positive means the keeper cost less than the player goes for in drafts. */
   draftValue: number | null
   /** Points while on this team, regular season. */
   points: number
@@ -209,7 +210,7 @@ export function seasonOutcomes(input: SeasonSuccessInput): KeeperOutcome[] {
       keepRound: pick.round,
       keepPick: pick.pickNo,
       adp,
-      draftValue: adp === null ? null : Math.round((adp - pick.pickNo) * 10) / 10,
+      draftValue: adp === null ? null : Math.round((pick.pickNo - adp) * 10) / 10,
       points: Math.round((line?.points ?? 0) * 100) / 100,
       weeksRostered: line?.weeks ?? 0,
       weeksStarted: line?.started ?? 0,
