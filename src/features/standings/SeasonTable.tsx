@@ -1,8 +1,16 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Avatar from '../../components/Avatar.tsx'
+import { SortableTh, SortSelect, useSortable, type SortColumn } from '../../components/sortable.tsx'
 import { sleeperAvatarUrl } from '../../lib/sleeper/client.ts'
 import type { SeasonStandings } from './history.ts'
-import { formatRecord, rank, type SeasonTeam } from './standings.ts'
+import {
+  formatRecord,
+  rank,
+  winPct,
+  type RankedTeam,
+  type RecordLine,
+  type SeasonTeam,
+} from './standings.ts'
 
 export function fmtPts(n: number): string {
   return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -21,93 +29,131 @@ export function StandingsTable({
   medianOn: boolean
   highlightOwnerId?: string | null
 }) {
-  const ranked = rank(season.teams, medianOn ? 'combined' : 'h2h')
-  return (
-    <div className="table-wrap">
-      <table className={'standings' + (medianOn ? ' standings--median' : '')}>
-        <thead>
-          <tr>
-            <th className="col-rank" scope="col">
-              #
-            </th>
-            <th className="col-team" scope="col">
-              Team
-            </th>
-            <th className="col-num" scope="col">
-              Record
-            </th>
-            {medianOn && (
-              <th className="col-num" scope="col">
-                vs Median
-              </th>
-            )}
-            {medianOn && (
-              <th className="col-num col-strong" scope="col">
-                Overall
-              </th>
-            )}
-            <th className="col-num" scope="col">
-              PF
-            </th>
-            <th className="col-num" scope="col">
-              PA
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {ranked.map((t) => {
-            const isChamp = season.champion != null && t.rosterId === season.champion
-            const isMe = Boolean(highlightOwnerId) && t.ownerId === highlightOwnerId
-            const cls = [isChamp ? 'is-champion' : '', isMe ? 'is-me' : '']
-              .filter(Boolean)
-              .join(' ')
-            return (
-              <tr key={t.rosterId} className={cls || undefined}>
-                <td className="col-rank" data-label="Rank">
-                  {t.rank}
-                </td>
-                <td className="col-team">
-                  <div className="team">
-                    <Avatar src={teamAvatarSrc(t)} name={t.teamName} />
-                    <div className="team__names">
-                      <div className="team__name">
-                        {t.teamName}
-                        {isChamp && (
-                          <span className="trophy" title="League champion">
-                            🏆
-                          </span>
-                        )}
-                      </div>
-                      <div className="team__owner">{t.ownerName}</div>
-                    </div>
-                  </div>
-                </td>
-                <td className="col-num" data-label="Record">
-                  {formatRecord(t.h2h)}
-                </td>
-                {medianOn && (
-                  <td className="col-num" data-label="vs Median">
-                    {formatRecord(t.median)}
-                  </td>
-                )}
-                {medianOn && (
-                  <td className="col-num col-strong" data-label="Overall">
-                    {formatRecord(t.combined)}
-                  </td>
-                )}
-                <td className="col-num" data-label="PF">
-                  {fmtPts(t.pointsFor)}
-                </td>
-                <td className="col-num" data-label="PA">
-                  {fmtPts(t.pointsAgainst)}
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-    </div>
+  const ranked = useMemo(
+    () => rank(season.teams, medianOn ? 'combined' : 'h2h'),
+    [season.teams, medianOn],
   )
+  const columns = useMemo<SortColumn<RankedTeam>[]>(
+    () => [
+      {
+        key: 'rank',
+        label: '#',
+        title: 'Rank',
+        get: (t) => t.rank,
+        defaultDir: 'asc',
+        className: 'col-rank',
+      },
+      { key: 'team', label: 'Team', get: (t) => t.teamName, className: 'col-team' },
+      { key: 'record', label: 'Record', get: (t) => recordSortValue(t.h2h), className: 'col-num' },
+      ...(medianOn
+        ? [
+            {
+              key: 'median',
+              label: 'vs Median',
+              get: (t: RankedTeam) => recordSortValue(t.median),
+              className: 'col-num',
+            },
+            {
+              key: 'overall',
+              label: 'Overall',
+              get: (t: RankedTeam) => recordSortValue(t.combined),
+              className: 'col-num col-strong',
+            },
+          ]
+        : []),
+      {
+        key: 'pf',
+        label: 'PF',
+        title: 'Points for',
+        get: (t) => t.pointsFor,
+        className: 'col-num',
+      },
+      {
+        key: 'pa',
+        label: 'PA',
+        title: 'Points against',
+        get: (t) => t.pointsAgainst,
+        className: 'col-num',
+      },
+    ],
+    [medianOn],
+  )
+  const { sort, setSort, toggle, sorted } = useSortable(ranked, columns)
+  return (
+    <>
+      {/* The header (and its sort buttons) is hidden on phones, so offer a picker there. */}
+      <div className="standings-sort">
+        <SortSelect columns={columns} sort={sort} onChange={setSort} />
+      </div>
+      <div className="table-wrap">
+        <table className={'standings' + (medianOn ? ' standings--median' : '')}>
+          <thead>
+            <tr>
+              {columns.map((c) => (
+                <SortableTh key={c.key} column={c} sort={sort} onToggle={toggle} />
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((t) => {
+              const isChamp = season.champion != null && t.rosterId === season.champion
+              const isMe = Boolean(highlightOwnerId) && t.ownerId === highlightOwnerId
+              const cls = [isChamp ? 'is-champion' : '', isMe ? 'is-me' : '']
+                .filter(Boolean)
+                .join(' ')
+              return (
+                <tr key={t.rosterId} className={cls || undefined}>
+                  <td className="col-rank" data-label="Rank">
+                    {t.rank}
+                  </td>
+                  <td className="col-team">
+                    <div className="team">
+                      <Avatar src={teamAvatarSrc(t)} name={t.teamName} />
+                      <div className="team__names">
+                        <div className="team__name">
+                          {t.teamName}
+                          {isChamp && (
+                            <span className="trophy" title="League champion">
+                              🏆
+                            </span>
+                          )}
+                        </div>
+                        <div className="team__owner">{t.ownerName}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="col-num" data-label="Record">
+                    {formatRecord(t.h2h)}
+                  </td>
+                  {medianOn && (
+                    <td className="col-num" data-label="vs Median">
+                      {formatRecord(t.median)}
+                    </td>
+                  )}
+                  {medianOn && (
+                    <td className="col-num col-strong" data-label="Overall">
+                      {formatRecord(t.combined)}
+                    </td>
+                  )}
+                  <td className="col-num" data-label="PF">
+                    {fmtPts(t.pointsFor)}
+                  </td>
+                  <td className="col-num" data-label="PA">
+                    {fmtPts(t.pointsAgainst)}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
+  )
+}
+
+/** Records sort by win percentage, then by wins, so 10-4 beats 9-4-1 beats 5-9. */
+export function recordSortValue(line: RecordLine): number {
+  return winPct(line) * 1000 + line.wins
 }
 
 export default function SeasonSection({

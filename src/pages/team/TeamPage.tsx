@@ -5,9 +5,10 @@ import HistoryStatus from '../../components/HistoryStatus.tsx'
 import NeedsLeague from '../../components/NeedsLeague.tsx'
 import PageHeader from '../../components/PageHeader.tsx'
 import SleeperTeamSelect from '../../components/SleeperTeamSelect.tsx'
+import { SortableTh, useSortable, type SortColumn } from '../../components/sortable.tsx'
 import { errorMessage, useLeague } from '../../context/LeagueContext.tsx'
-import { careers, type OwnerCareer } from '../../features/standings/alltime.ts'
-import { fmtPts } from '../../features/standings/SeasonTable.tsx'
+import { careers, type OwnerCareer, type OwnerSeason } from '../../features/standings/alltime.ts'
+import { fmtPts, recordSortValue } from '../../features/standings/SeasonTable.tsx'
 import { formatRecord } from '../../features/standings/standings.ts'
 import { loadPlayers, playerName, type PlayersDump } from '../../lib/players.ts'
 import type { SleeperTeam } from '../../lib/sleeper/league.ts'
@@ -315,6 +316,27 @@ function TeamHistory({ ownerId }: { ownerId: string }) {
       history.data ? (careers(history.data).find((c) => c.ownerId === ownerId) ?? null) : null,
     [history.data, ownerId],
   )
+  const columns = useMemo<SortColumn<OwnerSeason>[]>(
+    () => [
+      { key: 'season', label: 'Season', get: (s) => Number(s.season), defaultDir: 'desc' },
+      { key: 'team', label: 'Team', get: (s) => s.teamName },
+      { key: 'record', label: 'Record', get: (s) => recordSortValue(s.h2h), className: 'num' },
+      { key: 'median', label: 'vs Med', get: (s) => recordSortValue(s.median), className: 'num' },
+      {
+        key: 'rank',
+        label: 'Rank',
+        get: (s) => s.rank || null,
+        defaultDir: 'asc',
+        className: 'num',
+      },
+      { key: 'pf', label: 'PF', get: (s) => s.pointsFor, className: 'num' },
+      { key: 'pa', label: 'PA', get: (s) => s.pointsAgainst, className: 'num' },
+      { key: 'finish', label: 'Finish', get: (s) => s.playoffFinish, defaultDir: 'asc' },
+    ],
+    [],
+  )
+  const seasonRows = useMemo(() => career?.seasons ?? [], [career])
+  const { sort, toggle, sorted } = useSortable(seasonRows, columns)
 
   return (
     <div className="card">
@@ -369,18 +391,13 @@ function TeamHistory({ ownerId }: { ownerId: string }) {
             <table>
               <thead>
                 <tr>
-                  <th>Season</th>
-                  <th>Team</th>
-                  <th className="num">Record</th>
-                  <th className="num">vs Med</th>
-                  <th className="num">Rank</th>
-                  <th className="num">PF</th>
-                  <th className="num">PA</th>
-                  <th>Finish</th>
+                  {columns.map((c) => (
+                    <SortableTh key={c.key} column={c} sort={sort} onToggle={toggle} />
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {career.seasons.map((s) => (
+                {sorted.map((s) => (
                   <tr key={s.leagueId}>
                     <td className="nowrap">{s.season}</td>
                     <td>{s.teamName}</td>

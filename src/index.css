@@ -595,6 +595,55 @@
     -webkit-overflow-scrolling: touch;
     max-width: 100%;
   }
+  th.sortable {
+    padding: 0;
+  }
+  th.sortable .sort-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    width: 100%;
+    min-height: 0;
+    padding: 0.55rem 0.5rem;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    color: inherit;
+    font: inherit;
+    text-transform: inherit;
+    letter-spacing: inherit;
+    text-align: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  th.sortable.num .sort-button {
+    justify-content: flex-end;
+  }
+  th.sortable .sort-button:hover {
+    color: var(--text);
+  }
+  th.sortable .sort-arrow {
+    font-size: 0.7em;
+    opacity: 0.45;
+  }
+  th.sortable.active {
+    color: var(--text);
+  }
+  th.sortable.active .sort-arrow {
+    opacity: 1;
+    color: var(--accent);
+  }
+  .sort-select {
+    display: none;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0;
+  }
+  .sort-select select {
+    width: auto;
+    padding: 0.3rem 0.45rem;
+    font-size: 14px;
+  }
   tr.me td {
     background: rgba(56, 189, 248, 0.06);
   }
@@ -795,6 +844,15 @@
     background: var(--bg-elev-2);
     border-top: 0;
   }
+  .standings th.sortable .sort-button {
+    padding: 10px 12px;
+  }
+  .standings th.sortable:first-child .sort-button {
+    padding-left: 16px;
+  }
+  .standings th.sortable:last-child .sort-button {
+    padding-right: 16px;
+  }
   .standings th:first-child,
   .standings td:first-child {
     padding-left: 16px;
@@ -827,6 +885,9 @@
   .trophy {
     margin-left: 6px;
     font-size: 14px;
+  }
+  .standings-sort {
+    display: none;
   }
 
   /* ---------- Keepers (ported keepers-list styles, scoped) ---------- */
@@ -1204,9 +1265,16 @@
     margin: 0 -0.75rem;
   }
 
-  /* Standings rows collapse into cards on phones */
+  /* Standings rows collapse into cards on phones; sorting moves to a picker */
   .standings thead {
     display: none;
+  }
+  .sort-select {
+    display: inline-flex;
+  }
+  .standings-sort {
+    display: block;
+    padding: 0 16px 10px;
   }
   .standings,
   .standings tbody,
