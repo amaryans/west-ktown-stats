@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   assembleFromLeagueId,
   SleeperApiError,
@@ -104,14 +104,15 @@ export default function KeepersApp({ leagueId, savedLists, canSave, onSave }: Ke
     void load()
   }, [load])
 
-  // The league-wide saved list wins over local state once, when it first
-  // becomes known for this data; later local edits stick until saved again.
-  const [appliedSavedFor, setAppliedSavedFor] = useState<string | null>(null)
+  // The league-wide saved list wins over local state once per loaded dataset;
+  // later local edits stick until saved again. Keyed on the data object so a
+  // reload (or a second load in dev strict mode) applies it again.
+  const appliedFor = useRef<AssembledData | null>(null)
   useEffect(() => {
-    if (!data || !savedList || appliedSavedFor === data.previousLeague.id) return
+    if (!data || !savedList || appliedFor.current === data) return
+    appliedFor.current = data
     setEdits(editsFromEffective(new Set(savedList.playerIds), new Set(data.autoDetectedKeepers)))
-    setAppliedSavedFor(data.previousLeague.id)
-  }, [data, savedList, appliedSavedFor])
+  }, [data, savedList])
 
   useEffect(() => {
     if (data === null) return
