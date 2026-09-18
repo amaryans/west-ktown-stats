@@ -161,7 +161,10 @@ export default function DraftOrderView() {
             actually used.
           </div>
         )}
-        <ol className="stack" style={{ listStyle: 'none', padding: 0, margin: 0, gap: '0.4rem' }}>
+        <ol
+          className="stack draft-list"
+          style={{ listStyle: 'none', padding: 0, margin: 0, gap: '0.4rem' }}
+        >
           {shown.entries.map((e) => {
             const movement = e.seed !== null ? e.seed - e.slot : null
             const isMe = e.sleeperUserId && e.sleeperUserId === me?.sleeper_user_id
