@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   assembleFromLeagueId,
   createSleeperClient,
+  resolvePreviousLeague,
   SleeperApiError,
   UnsupportedLeagueError,
   withKeeperEdits,
@@ -29,6 +30,12 @@ describe('sleeper client', () => {
 })
 
 describe('assembleFromLeagueId', () => {
+  it('reads the entered season itself with exact, even when not complete', async () => {
+    const { previous } = await resolvePreviousLeague(fixtureClient(), 'L2025', { exact: true })
+    expect(previous.league_id).toBe('L2025')
+    expect(previous.status).toBe('pre_draft')
+  })
+
   it('resolves the upcoming league to its completed previous season', async () => {
     const data = await assembleFromLeagueId(fixtureClient(), 'L2025')
     expect(data.enteredLeague.id).toBe('L2025')

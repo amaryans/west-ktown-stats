@@ -11,12 +11,55 @@ import { careers, type OwnerCareer, type OwnerSeason } from '../../features/stan
 import { fmtPts, recordSortValue } from '../../features/standings/SeasonTable.tsx'
 import { formatRecord } from '../../features/standings/standings.ts'
 import { loadPlayers, playerName, type PlayersDump } from '../../lib/players.ts'
-import type { SleeperTeam } from '../../lib/sleeper/league.ts'
+import { loadLeagueChain } from '../../features/standings/history.ts'
+import { sleeper as sleeper_client, type SleeperLeague } from '../../lib/sleeper/client.ts'
+import {
+  loadSleeperLeagueCached,
+  type SleeperLeagueInfo,
+  type SleeperTeam,
+} from '../../lib/sleeper/league.ts'
 
 export default function TeamPage() {
   const { me, settings, sleeper, profiles } = useLeague()
   const [viewUserId, setViewUserId] = useState<string | null>(null)
   const ownerId = viewUserId ?? me?.sleeper_user_id ?? null
+  const leagueId = settings?.sleeper_league_id ?? null
+
+  // Every season in the league's history, so past rosters can be browsed.
+  const [chain, setChain] = useState<SleeperLeague[]>([])
+  useEffect(() => {
+    if (!leagueId) return
+    let active = true
+    loadLeagueChain(sleeper_client, leagueId, () => undefined)
+      .then((leagues) => {
+        if (active) setChain(leagues)
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [leagueId])
+  const [seasonLeagueId, setSeasonLeagueId] = useState<string | null>(null)
+  const isCurrentSeason = !seasonLeagueId || seasonLeagueId === leagueId
+  const [past, setPast] = useState<AsyncSeason>({ loading: false, error: null, info: null })
+  useEffect(() => {
+    if (isCurrentSeason || !seasonLeagueId) {
+      setPast({ loading: false, error: null, info: null })
+      return
+    }
+    let active = true
+    setPast({ loading: true, error: null, info: null })
+    loadSleeperLeagueCached(seasonLeagueId)
+      .then((info) => {
+        if (active) setPast({ loading: false, error: null, info })
+      })
+      .catch((err: unknown) => {
+        if (active) setPast({ loading: false, error: errorMessage(err), info: null })
+      })
+    return () => {
+      active = false
+    }
+  }, [seasonLeagueId, isCurrentSeason])
 
   if (!settings?.sleeper_league_id) {
     return (
@@ -27,7 +70,8 @@ export default function TeamPage() {
     )
   }
 
-  const team = sleeper.data?.teams.find((t) => t.userId === ownerId) ?? null
+  const seasonInfo = isCurrentSeason ? sleeper.data : past.info
+  const team = seasonInfo?.teams.find((t) => t.userId === ownerId) ?? null
   const isMine = ownerId === me?.sleeper_user_id
 
   return (
@@ -40,6 +84,24 @@ export default function TeamPage() {
             : undefined
         }
       >
+        {chain.length > 1 && (
+          <label className="row" style={{ margin: 0, gap: '0.4rem' }}>
+            <span className="small muted">Season</span>
+            <select
+              aria-label="Season"
+              style={{ width: 'auto' }}
+              value={seasonLeagueId ?? leagueId ?? ''}
+              onChange={(e) => setSeasonLeagueId(e.target.value)}
+            >
+              {chain.map((l) => (
+                <option key={l.league_id} value={l.league_id}>
+                  {l.season}
+                  {l.league_id === leagueId ? ' (current)' : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         {sleeper.data && (
           <label className="row" style={{ margin: 0, gap: '0.4rem' }}>
             <span className="small muted">View</span>
@@ -65,17 +127,22 @@ export default function TeamPage() {
 
       {!me?.sleeper_user_id && <ClaimTeamCard />}
 
-      {sleeper.loading && <div className="loading">Loading the league from Sleeper…</div>}
+      {(sleeper.loading || past.loading) && (
+        <div className="loading">Loading the league from Sleeper…</div>
+      )}
       {sleeper.error && (
         <div className="banner error">Could not reach Sleeper: {sleeper.error}</div>
       )}
+      {past.error && <div className="banner error">Could not load that season: {past.error}</div>}
 
-      {ownerId && sleeper.data && (
+      {ownerId && seasonInfo && (
         <div className="stack">
           {team ? (
-            <CurrentSeason team={team} />
+            <SeasonRoster team={team} info={seasonInfo} isCurrent={isCurrentSeason} />
           ) : (
-            <div className="banner">This member is not in the current Sleeper season.</div>
+            <div className="banner">
+              This member was not in the {seasonInfo.season} Sleeper season.
+            </div>
           )}
           <TeamHistory ownerId={ownerId} />
         </div>
@@ -136,9 +203,21 @@ function ClaimTeamCard() {
 
 const POSITION_ORDER = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'K', 'DEF']
 
-function CurrentSeason({ team }: { team: SleeperTeam }) {
-  const { sleeper } = useLeague()
-  const info = sleeper.data
+interface AsyncSeason {
+  loading: boolean
+  error: string | null
+  info: SleeperLeagueInfo | null
+}
+
+function SeasonRoster({
+  team,
+  info,
+  isCurrent,
+}: {
+  team: SleeperTeam
+  info: SleeperLeagueInfo
+  isCurrent: boolean
+}) {
   const [players, setPlayers] = useState<PlayersDump | null>(null)
   const [playersError, setPlayersError] = useState<string | null>(null)
 
@@ -157,7 +236,6 @@ function CurrentSeason({ team }: { team: SleeperTeam }) {
   }, [])
 
   const rankAmongTeams = useMemo(() => {
-    if (!info) return null
     const sorted = [...info.teams].sort(
       (a, b) =>
         winPctOf(b) - winPctOf(a) ||
@@ -173,7 +251,9 @@ function CurrentSeason({ team }: { team: SleeperTeam }) {
   const taxi = new Set(team.taxi)
   const bench = team.players.filter((p) => !starters.has(p) && !reserve.has(p) && !taxi.has(p))
   const gamesPlayed = team.wins + team.losses + team.ties
-  const seasonLabel = info ? `${info.season} season` : 'This season'
+  const seasonLabel = isCurrent
+    ? `${info.season} season`
+    : `${info.season} season · end-of-season roster`
 
   return (
     <div className="card">
@@ -186,7 +266,7 @@ function CurrentSeason({ team }: { team: SleeperTeam }) {
             </h2>
             <div className="team__owner">
               {team.displayName} · {seasonLabel}
-              {info && info.status === 'pre_draft' ? ' (pre-draft)' : ''}
+              {info.status === 'pre_draft' ? ' (pre-draft)' : ''}
             </div>
           </div>
         </div>
@@ -197,7 +277,7 @@ function CurrentSeason({ team }: { team: SleeperTeam }) {
           <div className="value">{formatRecord(team)}</div>
           {gamesPlayed > 0 && rankAmongTeams ? (
             <div className="sub">
-              #{rankAmongTeams} of {info?.teams.length}
+              #{rankAmongTeams} of {info.teams.length}
             </div>
           ) : null}
         </div>

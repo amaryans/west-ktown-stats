@@ -58,10 +58,18 @@ export interface KeepersAppProps {
   savedLists: SavedKeeperList[]
   canSave: boolean
   onSave: (list: { season: number; sleeperLeagueId: string; playerIds: string[] }) => Promise<void>
+  /** Read this exact season (already drafted, maybe still in progress) instead of the last completed one. */
+  exact?: boolean
 }
 
 /** Keeper eligibility boards for the upcoming draft, built from the league's previous season. */
-export default function KeepersApp({ leagueId, savedLists, canSave, onSave }: KeepersAppProps) {
+export default function KeepersApp({
+  leagueId,
+  savedLists,
+  canSave,
+  onSave,
+  exact = false,
+}: KeepersAppProps) {
   const [step, setStep] = useState<Step>('loading')
   const [loadingMessage, setLoadingMessage] = useState('')
   const [error, setError] = useState<string>()
@@ -88,7 +96,7 @@ export default function KeepersApp({ leagueId, savedLists, canSave, onSave }: Ke
       setLoadingMessage('Loading the player database (cached for a day)…')
       const playersDump = await loadPlayers().catch(() => undefined)
       setLoadingMessage('Assembling the previous season…')
-      const assembled = await assembleFromLeagueId(sleeper, leagueId, { playersDump })
+      const assembled = await assembleFromLeagueId(sleeper, leagueId, { playersDump, exact })
       const saved = readSaved(assembled.previousLeague.id)
       setData(assembled)
       setEdits(saved?.edits ?? NO_EDITS)
@@ -98,7 +106,7 @@ export default function KeepersApp({ leagueId, savedLists, canSave, onSave }: Ke
       setStep('loading')
       setError(errorMessage(cause))
     }
-  }, [leagueId])
+  }, [leagueId, exact])
 
   useEffect(() => {
     void load()
