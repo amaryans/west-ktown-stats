@@ -130,4 +130,6 @@ export interface SleeperPlayer {
   injury_status?: string | null
   number?: number | null
   age?: number | null
+  /** Sleeper's default draft-board rank (1 = best); huge for irrelevant players. */
+  search_rank?: number | null
 }

@@ -1053,7 +1053,7 @@
     border-radius: 8px;
     min-width: 0;
   }
-  .roster .pos {
+  .pos {
     flex: none;
     width: 2.6rem;
     text-align: center;
@@ -1065,22 +1065,22 @@
     background: var(--bg);
     color: var(--muted);
   }
-  .roster .pos.QB {
+  .pos.QB {
     color: #f87171;
   }
-  .roster .pos.RB {
+  .pos.RB {
     color: #34d399;
   }
-  .roster .pos.WR {
+  .pos.WR {
     color: #38bdf8;
   }
-  .roster .pos.TE {
+  .pos.TE {
     color: #fbbf24;
   }
-  .roster .pos.K {
+  .pos.K {
     color: #a78bfa;
   }
-  .roster .pos.DEF {
+  .pos.DEF {
     color: #f472b6;
   }
   .roster .pname {

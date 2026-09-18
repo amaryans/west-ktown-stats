@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Avatar from '../../components/Avatar.tsx'
 import HistoryStatus from '../../components/HistoryStatus.tsx'
@@ -12,6 +12,7 @@ import { fmtPts, recordSortValue } from '../../features/standings/SeasonTable.ts
 import { formatRecord } from '../../features/standings/standings.ts'
 import { loadPlayers, playerName, type PlayersDump } from '../../lib/players.ts'
 import { loadLeagueChain } from '../../features/standings/history.ts'
+const KeeperValuePanel = lazy(() => import('../../features/keepers/KeeperValuePanel.tsx'))
 import { sleeper as sleeper_client, type SleeperLeague } from '../../lib/sleeper/client.ts'
 import {
   loadSleeperLeagueCached,
@@ -220,6 +221,7 @@ function SeasonRoster({
 }) {
   const [players, setPlayers] = useState<PlayersDump | null>(null)
   const [playersError, setPlayersError] = useState<string | null>(null)
+  const [view, setView] = useState<'roster' | 'keepers'>('roster')
 
   useEffect(() => {
     let active = true
@@ -302,15 +304,51 @@ function SeasonRoster({
         </div>
       </div>
 
-      {playersError && (
+      <div className="subtabs mt" role="tablist" aria-label="Team view" style={{ marginBottom: 0 }}>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={view === 'roster'}
+          className={view === 'roster' ? 'subtab active' : 'subtab'}
+          onClick={() => setView('roster')}
+        >
+          Roster
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={view === 'keepers'}
+          className={view === 'keepers' ? 'subtab active' : 'subtab'}
+          onClick={() => setView('keepers')}
+        >
+          Keeper value
+        </button>
+      </div>
+
+      {view === 'keepers' && (
+        <div className="mt">
+          <Suspense fallback={<div className="loading">Loading keeper value…</div>}>
+            <KeeperValuePanel
+              leagueId={info.leagueId}
+              season={info.season}
+              rosterId={team.rosterId}
+              ownerId={team.userId}
+              teamsCount={info.teams.length}
+              isCurrent={isCurrent}
+            />
+          </Suspense>
+        </div>
+      )}
+
+      {view === 'roster' && playersError && (
         <div className="banner warn mt small">
           Could not load player names from Sleeper ({playersError}).
         </div>
       )}
-      {!players && !playersError && team.players.length > 0 && (
+      {view === 'roster' && !players && !playersError && team.players.length > 0 && (
         <p className="muted small mt">Loading player names (cached for a day)…</p>
       )}
-      {players && (
+      {view === 'roster' && players && (
         <>
           <RosterGroup title="Starters" ids={team.starters} players={players} keepOrder />
           <RosterGroup title="Bench" ids={bench} players={players} />
