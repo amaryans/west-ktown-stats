@@ -1,0 +1,11 @@
+{
+  "name": "west-ktown-stats",
+  "version": "1.0.0",
+  "description": "Season-by-season standings for any Sleeper fantasy football league, with a games-against-the-median toggle.",
+  "private": true,
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\"",
+    "start": "python3 -m http.server 8080"
+  },
+  "license": "MIT"
+}
