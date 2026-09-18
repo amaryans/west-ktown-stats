@@ -18,6 +18,8 @@ export interface Profile {
   team_name: string | null
   is_commissioner: boolean
   sleeper_user_id: string | null
+  /** A Sleeper team listed by the commissioner before that person signed up. */
+  is_placeholder: boolean
   created_at: string
 }
 

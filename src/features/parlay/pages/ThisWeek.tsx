@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import AddMissingMembers from '../../../components/AddMissingMembers.tsx'
 import { errorMessage, useLeague } from '../../../context/LeagueContext.tsx'
 import type { Profile, Week } from '../../../lib/db.ts'
 import { useParlay } from '../ParlayContext.tsx'
@@ -55,6 +56,7 @@ export default function ThisWeek() {
   if (!week) {
     return (
       <div className="stack">
+        <AddMissingMembers compact />
         <div className="card">
           <div className="card-header">
             <h2>
@@ -111,6 +113,7 @@ export default function ThisWeek() {
 
   return (
     <div className="stack">
+      <AddMissingMembers compact />
       <div className="card">
         <div className="card-header">
           <h2>

@@ -19,7 +19,9 @@ export default function SleeperTeamSelect({
   const { sleeper, profiles, me } = useLeague()
   const teams = sleeper.data?.teams ?? []
   const claimedBy = new Map(
-    profiles.filter((p) => p.sleeper_user_id).map((p) => [p.sleeper_user_id, p]),
+    profiles
+      .filter((p) => p.sleeper_user_id && !p.is_placeholder)
+      .map((p) => [p.sleeper_user_id, p]),
   )
   return (
     <select

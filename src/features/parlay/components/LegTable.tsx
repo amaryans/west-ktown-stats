@@ -97,6 +97,15 @@ export default function LegTable({ week, editable = true }: { week: Week; editab
                 <td className="nowrap member">
                   {profile.display_name}
                   {profile.id === me?.id && <span className="muted small"> (you)</span>}
+                  {profile.is_placeholder && (
+                    <span
+                      className="badge"
+                      style={{ marginLeft: '.4rem' }}
+                      title="Added from Sleeper; has not signed up yet"
+                    >
+                      not signed up
+                    </span>
+                  )}
                   {profile.id === week.loser_id && (
                     <span className="badge" style={{ marginLeft: '.4rem' }}>
                       placing

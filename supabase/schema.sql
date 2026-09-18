@@ -36,7 +36,8 @@ insert into public.league_settings (id) values (1);
 -- 2. Profiles: one per auth user, created automatically on signup
 -- ---------------------------------------------------------------------------
 create table public.profiles (
-  id               uuid primary key references auth.users (id) on delete cascade,
+  -- The auth.users id for signed-up members; a random id for placeholders.
+  id               uuid primary key default gen_random_uuid(),
   display_name     text not null,
   team_name        text,
   -- Commissioners manage league settings, member mapping and shared data.
@@ -45,8 +46,27 @@ create table public.profiles (
   -- Sleeper user_id for this member: "claiming" a team links them to their
   -- Sleeper roster. One member per Sleeper team.
   sleeper_user_id  text,
-  created_at       timestamptz not null default now()
+  -- Placeholder members are Sleeper teams the commissioner listed before that
+  -- person signed up, so the whole league shows up in the parlay tables. When
+  -- the real person signs up (or is linked) with that Sleeper team, the
+  -- placeholder's legs and weeks move to their account and it is deleted.
+  is_placeholder   boolean not null default false,
+  created_at       timestamptz not null default now(),
+  check (not (is_placeholder and is_commissioner))
 );
+
+-- Keep profiles in step with auth.users without a foreign key (placeholders
+-- have no auth user).
+create or replace function public.handle_deleted_user()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  delete from public.profiles where id = old.id;
+  return old;
+end $$;
+
+create trigger on_auth_user_deleted
+  after delete on auth.users
+  for each row execute procedure public.handle_deleted_user();
 
 create unique index profiles_sleeper_user_idx
   on public.profiles (sleeper_user_id) where sleeper_user_id is not null;
@@ -68,12 +88,54 @@ end $$;
 create trigger settings_touch before update on public.league_settings
   for each row execute procedure public.touch_updated_at();
 
--- Create a profile for each new auth user and enforce the invite code.
+-- Fold a placeholder member into a real account: everything that referenced
+-- the placeholder now references the account, then the placeholder is
+-- removed. The house-rule triggers are told to stand aside for the duration
+-- (app.merging), since this is bookkeeping, not a member editing a pick.
+create or replace function public.merge_placeholder_member(placeholder_id uuid, target_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not exists (select 1 from public.profiles where id = placeholder_id and is_placeholder) then
+    return;
+  end if;
+  if not exists (select 1 from public.profiles where id = target_id and not is_placeholder) then
+    raise exception 'Cannot merge a placeholder into another placeholder';
+  end if;
+  perform set_config('app.merging', 'on', true);
+  -- One leg per member per week: if both have one, the real account's wins.
+  delete from public.legs l
+    using public.legs t
+    where l.user_id = placeholder_id and t.user_id = target_id and t.week_id = l.week_id;
+  update public.legs set user_id = target_id where user_id = placeholder_id;
+  update public.legs set entered_by = target_id where entered_by = placeholder_id;
+  update public.weeks set loser_id = target_id where loser_id = placeholder_id;
+  update public.weeks set created_by = target_id where created_by = placeholder_id;
+  update public.stat_entries set entered_by = target_id where entered_by = placeholder_id;
+  update public.stat_suggestions set user_id = target_id where user_id = placeholder_id;
+  update public.stat_definitions set created_by = target_id where created_by = placeholder_id;
+  update public.draft_orders set created_by = target_id where created_by = placeholder_id;
+  update public.keeper_lists set updated_by = target_id where updated_by = placeholder_id;
+  delete from public.profiles where id = placeholder_id and is_placeholder;
+  perform set_config('app.merging', 'off', true);
+end $$;
+
+revoke all on function public.merge_placeholder_member(uuid, uuid) from public, anon, authenticated;
+
+-- True while merge_placeholder_member is rewriting references.
+create or replace function public.is_merging()
+returns boolean language sql stable as $$
+  select coalesce(current_setting('app.merging', true), 'off') = 'on';
+$$;
+
+-- Create a profile for each new auth user and enforce the invite code. If a
+-- placeholder already holds the Sleeper team being claimed, it is merged in.
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare
-  expected text;
-  given    text;
+  expected    text;
+  given       text;
+  sleeper     text;
+  placeholder uuid;
 begin
   select invite_code into expected from public.league_settings where id = 1;
   given := coalesce(new.raw_user_meta_data ->> 'invite_code', '');
@@ -82,16 +144,24 @@ begin
     raise exception 'Invalid invite code';
   end if;
 
+  sleeper := nullif(trim(new.raw_user_meta_data ->> 'sleeper_user_id'), '');
+  select id into placeholder from public.profiles
+    where is_placeholder and sleeper_user_id = sleeper;
+
   insert into public.profiles (id, display_name, team_name, sleeper_user_id, is_commissioner)
   values (
     new.id,
     coalesce(nullif(trim(new.raw_user_meta_data ->> 'display_name'), ''),
              split_part(new.email, '@', 1)),
     nullif(trim(new.raw_user_meta_data ->> 'team_name'), ''),
-    nullif(trim(new.raw_user_meta_data ->> 'sleeper_user_id'), ''),
-    -- first member in becomes commissioner
-    not exists (select 1 from public.profiles)
+    case when placeholder is null then sleeper else null end,
+    -- first real member in becomes commissioner
+    not exists (select 1 from public.profiles where not is_placeholder)
   );
+  if placeholder is not null then
+    perform public.merge_placeholder_member(placeholder, new.id);
+    update public.profiles set sleeper_user_id = sleeper where id = new.id;
+  end if;
   return new;
 end $$;
 
@@ -100,9 +170,12 @@ create trigger on_auth_user_created
   for each row execute procedure public.handle_new_user();
 
 -- Only a commissioner can grant or revoke commissioner status, and the last
--- commissioner cannot remove themselves.
+-- commissioner cannot remove themselves. Placeholders are commissioner-only
+-- to edit, and claiming a Sleeper team a placeholder holds merges it in.
 create or replace function public.protect_profile()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  placeholder uuid;
 begin
   if new.is_commissioner is distinct from old.is_commissioner then
     if not public.is_commissioner() then
@@ -115,6 +188,20 @@ begin
   end if;
   if new.id <> old.id then
     raise exception 'Profile id cannot change';
+  end if;
+  if new.is_placeholder is distinct from old.is_placeholder then
+    raise exception 'A member cannot be turned into or out of a placeholder';
+  end if;
+  if old.is_placeholder and not public.is_commissioner() then
+    raise exception 'Only a commissioner can edit a placeholder member';
+  end if;
+  if not new.is_placeholder and new.sleeper_user_id is not null
+     and new.sleeper_user_id is distinct from old.sleeper_user_id then
+    select id into placeholder from public.profiles
+      where is_placeholder and sleeper_user_id = new.sleeper_user_id and id <> new.id;
+    if placeholder is not null then
+      perform public.merge_placeholder_member(placeholder, new.id);
+    end if;
   end if;
   return new;
 end $$;
@@ -141,7 +228,8 @@ $$;
 -- Sleeper teams already claimed, so the sign-up form can grey them out.
 create or replace function public.claimed_sleeper_users()
 returns setof text language sql security definer stable set search_path = public as $$
-  select sleeper_user_id from public.profiles where sleeper_user_id is not null;
+  select sleeper_user_id from public.profiles
+  where sleeper_user_id is not null and not is_placeholder;
 $$;
 
 revoke all on function public.check_invite_code(text) from public;
@@ -229,7 +317,7 @@ returns trigger language plpgsql as $$
 declare
   uid uuid := auth.uid();
 begin
-  if public.is_commissioner() then
+  if public.is_merging() or public.is_commissioner() then
     return new;
   end if;
   if new.season is distinct from old.season or new.week is distinct from old.week
@@ -265,6 +353,12 @@ declare
   uid     uuid := auth.uid();
   commish boolean := public.is_commissioner();
 begin
+  if public.is_merging() then
+    if tg_op = 'DELETE' then
+      return old;
+    end if;
+    return new;
+  end if;
   select * into w from public.weeks where id = coalesce(new.week_id, old.week_id);
   select loser_adds_leg into allow from public.league_settings where id = 1;
   locked := w.lock_at is not null and now() >= w.lock_at;
@@ -409,6 +503,12 @@ create trigger stat_entries_touch before update on public.stat_entries
 create or replace function public.protect_stat_entry()
 returns trigger language plpgsql as $$
 begin
+  if public.is_merging() then
+    if tg_op = 'DELETE' then
+      return old;
+    end if;
+    return new;
+  end if;
   if not public.is_commissioner() and old.entered_by is distinct from auth.uid() then
     raise exception 'Only the member who entered this stat (or a commissioner) can change it';
   end if;
@@ -445,6 +545,8 @@ create policy "commissioner updates settings" on public.league_settings for upda
 
 create policy "members read profiles"   on public.profiles for select to authenticated using (true);
 create policy "profile update"          on public.profiles for update to authenticated using (id = auth.uid() or public.is_commissioner()) with check (id = auth.uid() or public.is_commissioner());
+create policy "commissioner adds placeholders" on public.profiles for insert to authenticated with check (public.is_commissioner() and is_placeholder and not is_commissioner);
+create policy "commissioner removes placeholders" on public.profiles for delete to authenticated using (public.is_commissioner() and is_placeholder);
 
 create policy "members read games"      on public.games     for select to authenticated using (true);
 create policy "members read odds"       on public.game_odds for select to authenticated using (true);

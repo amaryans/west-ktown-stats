@@ -67,7 +67,12 @@ data, members write their own suggestions/stat entries.
   Lottery" with a recorded seed and the event screen is theater over a fixed result.
 - Standings are recomputed from weekly matchups (regular season only); completed seasons are cached.
 - `stat_entries` are unique per (definition, season, week, subject); week 0 = season total.
-- One member per Sleeper team (`profiles_sleeper_user_idx`).
+- One member per Sleeper team (`profiles_sleeper_user_idx`). `profiles.id` is the auth user id for
+  real members and a random uuid for placeholders (`is_placeholder`); `merge_placeholder_member`
+  folds a placeholder into the account that claims its Sleeper team (on signup or profile update),
+  and the house-rule triggers stand aside while `app.merging` is on.
+- Existing databases take changes through `supabase/migrations/`; `schema.sql` stays the full,
+  fresh-install version and must include everything the migrations add.
 
 ## Testing
 

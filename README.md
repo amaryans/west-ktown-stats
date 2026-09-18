@@ -23,7 +23,10 @@ The site is mobile-first: on phones the tabs become a bottom bar and tables coll
 
 **Login.** Same structure as the parlay tracker: members sign up with the league invite code and
 claim their Sleeper team (one member per team). The first account becomes commissioner;
-commissioners can promote others. The parlay tracker's tables and house rules (one leg per
+commissioners can promote others. A commissioner can also list Sleeper teams whose owners have
+not signed up yet as placeholder members (Settings → Members, or the prompt on the Parlay tab),
+so every week's parlay shows the whole league; a placeholder merges into the real account when
+that person signs up with the same team. The parlay tracker's tables and house rules (one leg per
 member per week, lock times, who may settle what) are carried over unchanged, so an existing
 parlay database keeps working.
 
@@ -51,7 +54,9 @@ parlay database keeps working.
 
 If you already run the parlay tracker on a Supabase project, run only section 4 of the schema
 (the "Consolidated site tables") plus the `profiles_sleeper_user_idx` index and
-`claimed_sleeper_users` function from section 2 — the login and parlay tables are the same.
+`claimed_sleeper_users` function from section 2, then
+`supabase/migrations/2026-09-18-placeholder-members.sql` — the login and parlay tables are the
+same. The same migration upgrades a database created from an earlier copy of `schema.sql`.
 
 ### 2. Deploy to GitHub Pages
 
