@@ -39,7 +39,10 @@ npm run build        # tsc + vite build -> dist/
     Tailwind classes are used only here; the rest of the site uses the CSS in `src/index.css`.
   - `keepers/` — `engine/` (pure rules), `api/assemble.ts`, `KeepersApp.tsx`, `value.ts` +
     `KeeperValuePanel.tsx` (keeper cost vs ADP; ADP comes from the "ADP" manual stat, which
-    `scripts/fetch-adp.mjs` fills from Fantasy Football Calculator, else Sleeper `search_rank`).
+    `scripts/fetch-adp.mjs` fills from Fantasy Football Calculator, else Sleeper `search_rank`),
+    `success.ts` (pure: grades every past keeper on draft value, finish vs price and team impact;
+    percentile composite) + `successLoader.ts` (drafts + weekly `players_points`, cached per
+    completed season as `wkt.keepersuccess:v1:`), shown at `/stats/advanced/keepers`.
   - `stats/parseTable.ts` — parser for tables pasted from NFL.com.
   - `parlay/` — `lib/` (odds, week, board and stats math, pure), `ParlayContext.tsx` (weeks,
     legs, games + mutations, layered on `LeagueContext`), `components/`, `pages/`. Ported from

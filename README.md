@@ -14,7 +14,7 @@ team-claiming structure the whole site now uses) — into one React app.
 | Tab           | What it does                                                                                                                                                                                                                                                                                    |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Preseason** | **Draft order** published for the season; the **Lottery** (NBA-style weighted draw, reveal-by-pick on draft night, publish the result league-wide); **Keepers** (eligibility boards per the league rules; who was kept is recorded and saved per season, for any year in the league's history). |
-| **Stats**     | **All-time** standings across every season; **Manual stats** typed or pasted in from NFL.com; **Suggest a stat**, which files a GitHub issue automatically.                                                                                                                                     |
+| **Stats**     | **All-time** standings across every season; **Manual stats** typed or pasted in from NFL.com; **Advanced → Keeper success**, which grades every keeper in league history and ranks who keeps best; **Suggest a stat**, which files a GitHub issue automatically.                                |
 | **Standings** | Every season's regular-season standings from Sleeper, with the games-vs-median toggle.                                                                                                                                                                                                          |
 | **Team**      | The signed-in manager's roster for any season and their history in the league (any team can be browsed), with a **Keeper value** view that prices each keeper against ADP.                                                                                                                      |
 | **Settings**  | Profile and Sleeper team claim; commissioner: league settings, members, stat definitions, published data.                                                                                                                                                                                       |
@@ -153,6 +153,12 @@ docs/keeper-rules.md             the league's keeper rules, codified
 ```
 
 ## Notes on the data
+
+- Keeper success (Stats → Advanced) reads each season's draft from Sleeper (keeper flags plus the
+  lists saved under Preseason → Keepers) and the weekly matchups' per-player points, so every
+  number follows the league's own scoring. Draft value needs that season's "ADP" stat; run
+  _Fetch ADP_ with the missing seasons to fill it in. The keeper score is a percentile against
+  every keeper in the league's history.
 
 - Standings are recomputed from each week's matchups (regular season only), so head-to-head
   records match whether or not the league used Sleeper's median setting. Completed seasons are
