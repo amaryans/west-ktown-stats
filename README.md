@@ -16,7 +16,7 @@ team-claiming structure the whole site now uses) — into one React app.
 | **Preseason** | **Draft order** published for the season; the **Lottery** (NBA-style weighted draw, reveal-by-pick on draft night, publish the result league-wide); **Keepers** (eligibility boards per the league rules; who was kept is recorded and saved per season, for any year in the league's history). |
 | **Stats**     | **All-time** standings across every season; **Manual stats** typed or pasted in from NFL.com; **Suggest a stat**, which files a GitHub issue automatically.                                                                                                                                     |
 | **Standings** | Every season's regular-season standings from Sleeper, with the games-vs-median toggle.                                                                                                                                                                                                          |
-| **Team**      | The signed-in manager's current roster and season, plus their history in the league (any team can be browsed).                                                                                                                                                                                  |
+| **Team**      | The signed-in manager's roster for any season and their history in the league (any team can be browsed), with a **Keeper value** view that prices each keeper against ADP.                                                                                                                      |
 | **Settings**  | Profile and Sleeper team claim; commissioner: league settings, members, stat definitions, published data.                                                                                                                                                                                       |
 
 The site is mobile-first: on phones the tabs become a bottom bar and tables collapse into cards.
@@ -101,6 +101,25 @@ lines and a leg picked from the board can be re-priced with one tap.
 3. Run the _Fetch NFL odds_ workflow once from the Actions tab; it then runs Tuesday, Thursday
    and Sunday. Locally: `SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... ODDS_API_KEY=... npm run fetch-odds`.
 
+### 6. Real ADP for keeper value (optional, free)
+
+The Team tab's **Keeper value** view compares where a player can be kept with his average draft
+position. Without a sync it falls back to Sleeper's player rank; with it, ADP comes from
+[Fantasy Football Calculator](https://fantasyfootballcalculator.com/adp)'s free mock-draft feed
+(no API key) into an "ADP" manual stat, which the view picks up automatically.
+
+1. Make sure the **Secrets** `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are set (step 4).
+2. Run the _Fetch ADP_ workflow from the Actions tab. It reads the league's scoring (standard,
+   half-PPR, PPR or 2QB) and size from Sleeper and loads the league's current season.
+3. To fill in earlier years, run it again with the _seasons_ input, e.g. `2025,2024,2023`; each
+   past season's keeper value then uses the ADP from that year's draft.
+4. Set the **Variable** `ADP_AUTOMATION_ENABLED` = `true` to refresh weekly through draft season
+   (April–September). Locally: `SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... npm run fetch-adp`.
+
+Synced rows are marked with the feed page they came from, so re-runs replace them and leave
+anything typed in by hand alone. Player names are matched to Sleeper's by name, so a handful of
+unusual spellings may need a manual entry.
+
 ## Development
 
 ```bash
@@ -128,8 +147,9 @@ src/features/stats/parseTable.ts NFL.com paste parser (pure)
 src/features/parlay/             odds/parlay math (pure), weeks/legs context, parlay pages
 scripts/file-suggestions.mjs     suggestions -> GitHub issues
 scripts/fetch-odds.mjs           The Odds API -> games / game_odds tables
+scripts/fetch-adp.mjs            Fantasy Football Calculator ADP -> "ADP" stat entries (lib/ is pure)
 docs/keeper-rules.md             the league's keeper rules, codified
-.github/workflows/               CI + Pages deploy, suggestion filing, odds fetch
+.github/workflows/               CI + Pages deploy, suggestion filing, odds and ADP fetch
 ```
 
 ## Notes on the data

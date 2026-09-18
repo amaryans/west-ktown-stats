@@ -11,6 +11,9 @@ import { dqLabel, ruleLabel } from './lib/format.ts'
 import { loadSleeperDraftOrders } from '../draft/sleeperDrafts.ts'
 import { keeperValueRows, normalizeName, type AdpLookup, type KeeperValueRow } from './value.ts'
 
+/** Rows written by scripts/fetch-adp.mjs carry the feed page they came from. */
+const ADP_FEED_PREFIX = 'https://fantasyfootballcalculator.com/adp/'
+
 interface Loaded {
   data: AssembledData
   result: EligibilityResult
@@ -51,10 +54,18 @@ export default function KeeperValuePanel({
     loaded: null,
   })
 
-  // Manual ADP: a stat whose name mentions ADP, entered for the next draft's season.
+  // Manual ADP: a stat whose name mentions ADP, entered for the next draft's
+  // season (by hand, or by the Fetch ADP workflow, which stamps its rows with
+  // the Fantasy Football Calculator page they came from).
   const manual = useMemo(() => {
+    const none = {
+      def: null,
+      byName: new Map<string, number>(),
+      season: null as number | null,
+      synced: null as { url: string; at: string } | null,
+    }
     const def = statDefinitions.find((d) => /\badp\b/i.test(d.label) || /adp/i.test(d.key))
-    if (!def) return { def: null, byName: new Map<string, number>(), season: null as number | null }
+    if (!def) return none
     const seasons = statEntries.filter((e) => e.definition_id === def.id).map((e) => e.season)
     const useSeason = seasons.includes(nextSeason)
       ? nextSeason
@@ -62,11 +73,14 @@ export default function KeeperValuePanel({
         ? Math.max(...seasons)
         : null
     const byName = new Map<string, number>()
+    let synced: { url: string; at: string } | null = null
     for (const e of statEntries) {
-      if (e.definition_id === def.id && e.season === useSeason)
-        byName.set(normalizeName(e.subject), e.value)
+      if (e.definition_id !== def.id || e.season !== useSeason) continue
+      byName.set(normalizeName(e.subject), e.value)
+      if (e.source_url?.startsWith(ADP_FEED_PREFIX) && (!synced || e.updated_at > synced.at))
+        synced = { url: e.source_url, at: e.updated_at }
     }
-    return { def, byName, season: useSeason }
+    return { def, byName, season: useSeason, synced }
   }, [statDefinitions, statEntries, nextSeason])
 
   useEffect(() => {
@@ -243,7 +257,17 @@ export default function KeeperValuePanel({
         </div>
       )}
       <p className="muted small" style={{ margin: 0 }}>
-        {usingManual && manual.def && (
+        {usingManual && manual.def && manual.synced && (
+          <>
+            {manual.season ? `${manual.season} ` : ''}ADP from{' '}
+            <a href={manual.synced.url} target="_blank" rel="noreferrer">
+              Fantasy Football Calculator
+            </a>{' '}
+            mock drafts, synced {new Date(manual.synced.at).toLocaleDateString()} into the &quot;
+            {manual.def.label}&quot; stat.{' '}
+          </>
+        )}
+        {usingManual && manual.def && !manual.synced && (
           <>
             ADP from the &quot;{manual.def.label}&quot; stat
             {manual.season ? ` (${manual.season})` : ''} under Stats → Manual stats.{' '}
@@ -261,9 +285,11 @@ export default function KeeperValuePanel({
         )}
         {!manual.def && (
           <>
-            For real ADP numbers, {isCommissioner ? 'define' : 'ask the commissioner to define'} a
-            stat named &quot;ADP&quot; and paste a {nextSeason} ADP table (player, ADP) under Stats
-            → Manual stats; this table picks it up automatically.
+            For real ADP numbers, {isCommissioner ? 'run' : 'ask the commissioner to run'} the
+            &quot;Fetch ADP&quot; workflow in the site&apos;s GitHub repository (it loads{' '}
+            {nextSeason} and earlier years from Fantasy Football Calculator), or define a stat named
+            &quot;ADP&quot; and paste a {nextSeason} ADP table (player, ADP) under Stats → Manual
+            stats; this table picks either up automatically.
           </>
         )}
       </p>

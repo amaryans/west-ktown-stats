@@ -37,7 +37,9 @@ npm run build        # tsc + vite build -> dist/
   - `lottery/` — `engine/` (pure, seedable), `data/` (mapping, seeding), `state/store.ts`
     (zustand, persisted as `ffl.v1`), `screens/`, `LotteryApp.tsx` (phase switch + step nav).
     Tailwind classes are used only here; the rest of the site uses the CSS in `src/index.css`.
-  - `keepers/` — `engine/` (pure rules), `api/assemble.ts`, `KeepersApp.tsx`.
+  - `keepers/` — `engine/` (pure rules), `api/assemble.ts`, `KeepersApp.tsx`, `value.ts` +
+    `KeeperValuePanel.tsx` (keeper cost vs ADP; ADP comes from the "ADP" manual stat, which
+    `scripts/fetch-adp.mjs` fills from Fantasy Football Calculator, else Sleeper `search_rank`).
   - `stats/parseTable.ts` — parser for tables pasted from NFL.com.
   - `parlay/` — `lib/` (odds, week, board and stats math, pure), `ParlayContext.tsx` (weeks,
     legs, games + mutations, layered on `LeagueContext`), `components/`, `pages/`. Ported from
@@ -74,9 +76,15 @@ data, members write their own suggestions/stat entries.
 - Existing databases take changes through `supabase/migrations/`; `schema.sql` stays the full,
   fresh-install version and must include everything the migrations add.
 
+## Scripts and workflows
+
+`scripts/*.mjs` run in GitHub Actions with the service-role key (never in the browser):
+`file-suggestions` (suggestions → issues), `fetch-odds` (The Odds API), `fetch-adp` (free ADP feed
+→ `stat_entries`, synced rows marked by `source_url`; pure helpers in `scripts/lib/`, tested).
+
 ## Testing
 
-Pure modules have unit tests next to them (`*.test.ts`); keepers tests live in
+Pure modules have unit tests next to them (`*.test.ts`, plus `scripts/lib/*.test.mjs`); keepers tests live in
 `features/keepers/__tests__` with hand-authored Sleeper fixtures. Lottery screen tests use RTL and
 fake only the `setTimeout` family (framer-motion needs real rAF). Pages that talk to Supabase are
 not unit-tested; they were checked with a Playwright run against mocked Supabase/Sleeper responses.

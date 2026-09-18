@@ -15,7 +15,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "file-suggestions": "node scripts/file-suggestions.mjs",
-    "fetch-odds": "node scripts/fetch-odds.mjs"
+    "fetch-odds": "node scripts/fetch-odds.mjs",
+    "fetch-adp": "node scripts/fetch-adp.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

@@ -1,0 +1,52 @@
+name: Fetch ADP
+
+# Pulls average draft position from Fantasy Football Calculator's free feed
+# (no API key) into the "ADP" manual stat, which the Team tab's keeper value
+# reads. Runs weekly through draft season; run it by hand to backfill earlier
+# years (Actions -> Fetch ADP -> Run workflow, seasons "2025,2024,2023").
+#
+# Required repository secrets:
+#   SUPABASE_URL                e.g. https://xxxx.supabase.co
+#   SUPABASE_SERVICE_ROLE_KEY   Project Settings -> API (keep private)
+# Repository variable ADP_AUTOMATION_ENABLED=true switches the schedule on;
+# manual runs work without it.
+
+on:
+  schedule:
+    # Mondays 12:00 UTC, April through September (mock drafts run all summer).
+    - cron: '0 12 * 4-9 1'
+  workflow_dispatch:
+    inputs:
+      seasons:
+        description: 'Seasons to load, comma-separated (blank = the league season)'
+        required: false
+        default: ''
+      format:
+        description: 'Scoring (blank = read from the Sleeper league)'
+        required: false
+        type: choice
+        default: ''
+        options: ['', 'standard', 'half-ppr', 'ppr', '2qb']
+      teams:
+        description: 'League size 8, 10, 12 or 14 (blank = read from the Sleeper league)'
+        required: false
+        default: ''
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.ADP_AUTOMATION_ENABLED == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run fetch-adp
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ADP_SEASONS: ${{ inputs.seasons }}
+          ADP_FORMAT: ${{ inputs.format }}
+          ADP_TEAMS: ${{ inputs.teams }}
