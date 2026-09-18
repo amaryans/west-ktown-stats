@@ -137,7 +137,7 @@ export default function TeamPage() {
       {past.error && <div className="banner error">Could not load that season: {past.error}</div>}
 
       {ownerId && seasonInfo && (
-        <div className="stack split">
+        <div className="stack">
           {team ? (
             <SeasonRoster team={team} info={seasonInfo} isCurrent={isCurrentSeason} />
           ) : (
