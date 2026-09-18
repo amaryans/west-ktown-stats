@@ -1,0 +1,35 @@
+name: Fetch NFL odds
+
+# Pulls the current week's NFL lines from The Odds API into Supabase so
+# members can pick from an odds board. Optional: the app works fine with
+# manually entered odds if the secrets below are not set.
+#
+# Required repository secrets:
+#   SUPABASE_URL                e.g. https://xxxx.supabase.co
+#   SUPABASE_SERVICE_ROLE_KEY   Project Settings -> API (keep private)
+#   ODDS_API_KEY                https://the-odds-api.com (free tier is plenty)
+
+on:
+  schedule:
+    # Tue 14:00 UTC (lines open), Thu 18:00 UTC (before TNF), Sun 14:00 UTC (final lines)
+    - cron: '0 14 * * 2'
+    - cron: '0 18 * * 4'
+    - cron: '0 14 * * 0'
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    if: ${{ vars.ODDS_AUTOMATION_ENABLED == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run fetch-odds
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
