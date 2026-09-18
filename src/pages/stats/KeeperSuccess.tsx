@@ -73,13 +73,22 @@ export default function KeeperSuccess() {
     return map
   }, [statDefinitions, statEntries])
 
+  // The season in progress has only a few weeks behind it, so it stays out
+  // of the numbers (and the percentiles) unless asked for.
+  const [includeCurrent, setIncludeCurrent] = useState(false)
+  const inProgress = useMemo(() => (raw.seasons ?? []).filter((s) => !s.complete), [raw.seasons])
+  const seasonsUsed = useMemo(
+    () => (raw.seasons ?? []).filter((s) => s.complete || includeCurrent),
+    [raw.seasons, includeCurrent],
+  )
+
   const outcomes = useMemo<KeeperOutcome[]>(() => {
     if (!raw.seasons) return []
     const info = (id: string) => {
       const p = players?.[id]
       return p ? { name: playerName(p, id), position: p.position ?? null } : undefined
     }
-    const all = raw.seasons.flatMap((s) => {
+    const all = seasonsUsed.flatMap((s) => {
       const input: SeasonSuccessInput = {
         season: s.season,
         leagueId: s.leagueId,
@@ -94,7 +103,7 @@ export default function KeeperSuccess() {
       return seasonOutcomes(input)
     })
     return scoreKeepers(all)
-  }, [raw.seasons, keeperLists, adpBySeason, players])
+  }, [raw.seasons, seasonsUsed, keeperLists, adpBySeason, players])
 
   const managers = useMemo(() => managerRecords(outcomes), [outcomes])
 
@@ -103,7 +112,7 @@ export default function KeeperSuccess() {
     [outcomes],
   )
   const seasonsMissingAdp = seasonsWithKeepers.filter((s) => !adpBySeason.has(s))
-  const seasonsWithoutKeepers = (raw.seasons ?? [])
+  const seasonsWithoutKeepers = seasonsUsed
     .filter((s) => !seasonsWithKeepers.includes(s.season))
     .sort((a, b) => b.season - a.season)
 
@@ -139,6 +148,27 @@ export default function KeeperSuccess() {
             averaged over the parts that are known. <MethodDetails />
           </div>
 
+          {inProgress.length > 0 && (
+            <label className="row" style={{ margin: 0, gap: '0.5rem', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={includeCurrent}
+                onChange={(e) => setIncludeCurrent(e.target.checked)}
+              />
+              <span className="small">
+                Include the season in progress ({inProgress.map((s) => s.season).join(', ')},{' '}
+                {inProgress
+                  .map((s) => Object.keys(s.matchupsByWeek).length)
+                  .reduce((a, b) => a + b, 0)}{' '}
+                week
+                {inProgress.reduce((n, s) => n + Object.keys(s.matchupsByWeek).length, 0) === 1
+                  ? ''
+                  : 's'}{' '}
+                played)
+              </span>
+            </label>
+          )}
+
           {raw.loading && <div className="loading">{raw.progress ?? 'Loading…'}</div>}
           {raw.error && (
             <div className="banner error">Could not read the drafts from Sleeper: {raw.error}</div>
@@ -146,8 +176,8 @@ export default function KeeperSuccess() {
 
           {raw.seasons && outcomes.length === 0 && (
             <div className="banner warn">
-              No keepers found in any season. Keepers are picked up from Sleeper&apos;s keeper flags
-              on each draft and from the lists saved under{' '}
+              No keepers found in any {includeCurrent ? '' : 'completed '}season. Keepers are picked
+              up from Sleeper&apos;s keeper flags on each draft and from the lists saved under{' '}
               <Link to="/preseason/keepers">Preseason → Keepers</Link>.
             </div>
           )}
