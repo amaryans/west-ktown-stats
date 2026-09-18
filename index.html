@@ -1,36 +1,22 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light dark">
-  <title>Sleeper League History</title>
-  <meta name="description" content="All-time standings for any Sleeper fantasy football league, season by season, with an optional games-against-the-median view.">
-  <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-  <main class="page">
-    <header class="hero">
-      <p class="hero__eyebrow">Sleeper fantasy football</p>
-      <h1 class="hero__title">League history</h1>
-      <p class="hero__lede">Every season's standings for a Sleeper league, with a toggle to include games against the league median.</p>
-      <form id="league-form" class="search" autocomplete="off">
-        <label class="visually-hidden" for="league-id">Sleeper league ID</label>
-        <input id="league-id" class="search__input" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="Sleeper league ID" required>
-        <button id="go" class="search__button" type="submit">Load</button>
-      </form>
-      <p class="hero__hint">Your league ID is the long number in your league's URL on sleeper.com (for example <code>sleeper.com/leagues/<strong>1124831356770168832</strong></code>). Any year of the league works: earlier seasons are found automatically.</p>
-    </header>
-
-    <p id="status" class="status" role="status" aria-live="polite" hidden></p>
-    <div id="results"></div>
-
-    <footer class="footer">
-      <p>Records are recomputed from each week's matchups, regular season only. "vs Median" counts a win each week you score above the league median and a loss below it. Sort order is win percentage, then points for. Not affiliated with Sleeper.</p>
-    </footer>
-  </main>
-
-  <script src="standings.js"></script>
-  <script src="app.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b1220" />
+    <meta name="color-scheme" content="dark" />
+    <meta
+      name="description"
+      content="West K-Town Fantasy Football: standings history, draft lottery, keepers, stats and team pages."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏈</text></svg>"
+    />
+    <title>West K-Town Fantasy Football</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>

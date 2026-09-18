@@ -1,41 +1,123 @@
-# West K-Town Stats
+# West K-Town Fantasy Football
 
-A small static website that shows the full standings history of any [Sleeper](https://sleeper.com) fantasy football league.
+The league's one website: standings history, the draft lottery, keeper eligibility, stats and
+each manager's team page, behind a single league login.
 
-- Enter a league ID and every season in the league's history is loaded automatically (Sleeper links each season to the previous one).
-- Each season shows team, record, points for and points against for the regular season.
-- A **Games vs. median** toggle on each season adds a record against the weekly league median and an overall record that combines both, and re-ranks the table by it. It defaults to on for seasons where the league had Sleeper's "league median" setting enabled.
-- Works on phones: standings collapse into cards on narrow screens.
-- No backend and no build step. The browser talks directly to the public Sleeper API. Completed seasons are cached in `localStorage`.
+It consolidates four earlier apps — `west-ktown-stats` (standings history),
+`fantasy-football-lottery`, `keepers-list` and the login/team-claiming structure of
+`fantasy-parlay-tracker` — into one React app.
 
-## Finding your league ID
+**Live site:** https://amaryans.github.io/west-ktown-stats/
 
-It is the long number in your league's URL, e.g. `https://sleeper.com/leagues/1124831356770168832`. Any season's ID works. You can also link straight to a league with `?league=<id>`.
+## What's in it
 
-## Running locally
+| Tab           | What it does                                                                                                                                                                                                                                     |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Preseason** | **Draft order** published for the season; the **Lottery** (NBA-style weighted draw, reveal-by-pick on draft night, publish the result league-wide); **Keepers** (eligibility boards per the league rules, with a league-wide saved keeper list). |
+| **Stats**     | **All-time** standings across every season; **Manual stats** typed or pasted in from NFL.com; **Suggest a stat**, which files a GitHub issue automatically.                                                                                      |
+| **Standings** | Every season's regular-season standings from Sleeper, with the games-vs-median toggle.                                                                                                                                                           |
+| **Team**      | The signed-in manager's current roster and season, plus their history in the league (any team can be browsed).                                                                                                                                   |
+| **Settings**  | Profile and Sleeper team claim; commissioner: league settings, members, stat definitions, published data.                                                                                                                                        |
 
-Any static file server works:
+The site is mobile-first: on phones the tabs become a bottom bar and tables collapse into cards.
 
-```sh
-npm start          # serves on http://localhost:8080
+**Login.** Same structure as the parlay tracker: members sign up with the league invite code and
+claim their Sleeper team (one member per team). The first account becomes commissioner;
+commissioners can promote others. Both apps can share one Supabase project — the schema here
+includes the parlay tracker's tables unchanged.
+
+## Stack
+
+- Frontend: React 19 + TypeScript + Vite, hosted on **GitHub Pages** (static, hash routing).
+- Backend: **Supabase** free tier (Postgres, auth, row-level security). The browser only ever
+  sees the public anon key; the policies in `supabase/schema.sql` protect the data.
+- Sleeper's public API (no key) for league data, read directly from the browser.
+- GitHub Actions for CI/deploy and for turning stat suggestions into issues.
+
+## Setup
+
+### 1. Create the Supabase project
+
+1. Sign up at [supabase.com](https://supabase.com) and create a project (free tier is fine).
+2. Open **SQL Editor**, paste the whole of [`supabase/schema.sql`](supabase/schema.sql), run it.
+3. **Authentication → Sign In / Providers → Email**: decide about _Confirm email_. Off lets
+   members use the site immediately; on works too, they click a confirmation link first.
+4. **Authentication → URL Configuration**: set the Site URL to your Pages URL
+   (`https://<you>.github.io/west-ktown-stats/`).
+5. Note the **Project URL** and **anon public key** from **Project Settings → API**.
+6. In **Table Editor → league_settings**, change `invite_code` from `CHANGE-ME`. Everything
+   else (league name, season, Sleeper league ID) can be set from the site's Settings tab.
+
+If you already run the parlay tracker on a Supabase project, run only section 4 of the schema
+(the "Consolidated site tables") plus the `profiles_sleeper_user_idx` index and
+`claimed_sleeper_users` function from section 2 — the login tables are the same.
+
+### 2. Deploy to GitHub Pages
+
+1. **Settings → Pages**: set _Source_ to **GitHub Actions**.
+2. **Settings → Secrets and variables → Actions → Variables**: add
+   - `VITE_SUPABASE_URL` – the project URL
+   - `VITE_SUPABASE_ANON_KEY` – the anon public key
+3. Push to `main`. CI lints, typechecks, tests, builds and deploys.
+
+If the repo is renamed or you use a custom domain, set the `VITE_BASE_PATH` variable (e.g. `/`).
+
+### 3. First sign-in
+
+1. Create your account first (it becomes commissioner).
+2. **Settings → League**: paste the Sleeper league ID (any season's ID; earlier seasons are found
+   automatically). Standings, team pages, the lottery import and keepers all switch on.
+3. Claim your Sleeper team in your profile, then send the league the URL and invite code.
+
+### 4. Stat suggestions → GitHub issues (optional but recommended)
+
+Suggestions are stored in Supabase; the **File stat suggestions** workflow turns new ones into
+issues labelled `stat-suggestion` and writes the issue number back.
+
+1. **Settings → Secrets and variables → Actions → Secrets**: add `SUPABASE_URL` and
+   `SUPABASE_SERVICE_ROLE_KEY` (Project Settings → API; this key bypasses row security, so it
+   lives only in GitHub secrets, never in the app).
+2. The workflow runs every six hours and can be run by hand from the Actions tab.
+3. For instant filing, add a Supabase **Database Webhook** on `stat_suggestions` (insert) that
+   POSTs to `https://api.github.com/repos/<you>/west-ktown-stats/dispatches` with headers
+   `Authorization: Bearer <fine-grained PAT with Actions: write>`,
+   `Accept: application/vnd.github+json` and body `{"event_type":"stat-suggestion"}`.
+
+## Development
+
+```bash
+npm install
+cp .env.example .env   # fill in the Supabase URL and anon key
+npm run dev            # http://localhost:5173/west-ktown-stats/
+npm test               # vitest: engines, standings math, parsers, lottery screens
+npm run lint && npm run typecheck && npm run format:check
+npm run build          # dist/
 ```
 
-## Tests
+## Project layout
 
-The standings math lives in `standings.js` and is unit-tested with Node's built-in test runner:
-
-```sh
-npm test
+```
+supabase/schema.sql              tables, triggers (league rules), row-level security
+src/lib/sleeper/                 one typed Sleeper client + response types
+src/lib/players.ts               players dump, cached in IndexedDB for a day
+src/context/                     auth session; league data + mutations
+src/components/                  shell (Layout, SubTabs), shared widgets
+src/pages/                       one folder per tab
+src/features/standings/          standings math, history loader, all-time aggregates (pure)
+src/features/lottery/            engine (pure), Sleeper mapping, zustand store, screens
+src/features/keepers/            rules engine (pure), Sleeper assembly, boards
+src/features/stats/parseTable.ts NFL.com paste parser (pure)
+scripts/file-suggestions.mjs     suggestions -> GitHub issues
+docs/keeper-rules.md             the league's keeper rules, codified
+.github/workflows/               CI + Pages deploy, suggestion filing
 ```
 
-## Deploying
+## Notes on the data
 
-`.github/workflows/pages.yml` runs the tests and deploys the site to GitHub Pages on every push to `main`. Before the first deploy, enable Pages once: in the repository settings open **Pages** and set **Source** to **GitHub Actions**. Then re-run the workflow from the Actions tab (or push to `main` again).
-
-## How the numbers are computed
-
-- Records are recomputed from each week's matchups rather than read from Sleeper's roster totals, so the head-to-head record is the same whether or not the league used the median setting.
-- Only regular-season weeks (before `playoff_week_start`) are counted. For the current season, only weeks that have been scored are included.
-- **vs. Median**: each week, a team scoring above the league median gets a win, below it a loss, and exactly on it a tie. This matches Sleeper's league-median rule.
-- Sort order is win percentage, then points for, then fewest points against.
-- The 🏆 badge marks the winner of the playoff bracket for completed seasons.
+- Standings are recomputed from each week's matchups (regular season only), so head-to-head
+  records match whether or not the league used Sleeper's median setting. Completed seasons are
+  cached in `localStorage`.
+- The lottery is computed up-front with a recorded seed; the results poster and the published
+  draft order both show it, so anyone can replay and verify the draw.
+- Manual stats are keyed by definition, season, week (0 = season total) and subject, so pasting
+  an updated table overwrites the old numbers instead of duplicating them.
