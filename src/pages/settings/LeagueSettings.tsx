@@ -9,11 +9,16 @@ export default function LeagueSettingsForm() {
     season: settings?.season ?? new Date().getFullYear(),
     season_start: settings?.season_start ?? '',
     sleeper_league_id: settings?.sleeper_league_id ?? '',
+    default_stake: String(settings?.default_stake ?? 5),
+    loser_adds_leg: settings?.loser_adds_leg ?? true,
   })
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const set = (k: keyof typeof league) => (e: ChangeEvent<HTMLInputElement>) =>
-    setLeague((f) => ({ ...f, [k]: e.target.value }))
+    setLeague((f) => ({
+      ...f,
+      [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value,
+    }))
 
   const commissioners = profiles.filter((p) => p.is_commissioner).map((p) => p.display_name)
   const sleeperStatus = !league.sleeper_league_id.trim()
@@ -37,6 +42,8 @@ export default function LeagueSettingsForm() {
         season: Number(league.season),
         season_start: league.season_start,
         sleeper_league_id: league.sleeper_league_id.trim() || null,
+        default_stake: Number(league.default_stake) || 0,
+        loser_adds_leg: Boolean(league.loser_adds_leg),
       })
       setMsg({ ok: true, text: 'League settings saved.' })
     } catch (err) {
@@ -111,6 +118,27 @@ export default function LeagueSettingsForm() {
             onChange={set('season_start')}
             required
           />
+        </div>
+        <div className="field">
+          <label htmlFor="l-stake">Parlay default stake ($)</label>
+          <input
+            id="l-stake"
+            type="number"
+            step="0.01"
+            min="0"
+            value={league.default_stake}
+            onChange={set('default_stake')}
+          />
+          <span className="help">Whoever places the parlay can change it for their week.</span>
+        </div>
+        <div className="field checkbox-row" style={{ alignSelf: 'end' }}>
+          <input
+            id="l-loser-leg"
+            type="checkbox"
+            checked={league.loser_adds_leg}
+            onChange={set('loser_adds_leg')}
+          />
+          <label htmlFor="l-loser-leg">The parlay placer also picks a leg</label>
         </div>
         <div className="field wide">
           <label htmlFor="l-sleeper">Sleeper league ID</label>

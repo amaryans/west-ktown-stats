@@ -52,6 +52,7 @@ export default tseslint.config(
       'src/features/standings/*.ts',
       'src/features/lottery/data/**/*.ts',
       'src/features/keepers/api/**/*.ts',
+      'src/features/parlay/lib/**/*.ts',
     ],
     rules: {
       'no-restricted-imports': [

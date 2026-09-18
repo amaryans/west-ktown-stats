@@ -14,7 +14,8 @@
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "file-suggestions": "node scripts/file-suggestions.mjs"
+    "file-suggestions": "node scripts/file-suggestions.mjs",
+    "fetch-odds": "node scripts/fetch-odds.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

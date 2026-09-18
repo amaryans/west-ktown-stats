@@ -11,6 +11,7 @@ import StatsPage from './pages/stats/StatsPage.tsx'
 import StandingsPage from './pages/standings/StandingsPage.tsx'
 import TeamPage from './pages/team/TeamPage.tsx'
 import SettingsPage from './pages/settings/SettingsPage.tsx'
+import ParlayPage from './pages/parlay/ParlayPage.tsx'
 
 function NotConfigured() {
   return (
@@ -53,6 +54,7 @@ export default function App() {
             <Route path="/stats/*" element={<StatsPage />} />
             <Route path="/history" element={<StandingsPage />} />
             <Route path="/team" element={<TeamPage />} />
+            <Route path="/parlay/*" element={<ParlayPage />} />
             <Route path="/settings/*" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/history" replace />} />
           </Route>

@@ -4,8 +4,8 @@ The league's one website: standings history, the draft lottery, keeper eligibili
 each manager's team page, behind a single league login.
 
 It consolidates four earlier apps — `west-ktown-stats` (standings history),
-`fantasy-football-lottery`, `keepers-list` and the login/team-claiming structure of
-`fantasy-parlay-tracker` — into one React app.
+`fantasy-football-lottery`, `keepers-list` and `fantasy-parlay-tracker` (whose login and
+team-claiming structure the whole site now uses) — into one React app.
 
 **Live site:** https://amaryans.github.io/west-ktown-stats/
 
@@ -23,8 +23,9 @@ The site is mobile-first: on phones the tabs become a bottom bar and tables coll
 
 **Login.** Same structure as the parlay tracker: members sign up with the league invite code and
 claim their Sleeper team (one member per team). The first account becomes commissioner;
-commissioners can promote others. Both apps can share one Supabase project — the schema here
-includes the parlay tracker's tables unchanged.
+commissioners can promote others. The parlay tracker's tables and house rules (one leg per
+member per week, lock times, who may settle what) are carried over unchanged, so an existing
+parlay database keeps working.
 
 ## Stack
 
@@ -50,7 +51,7 @@ includes the parlay tracker's tables unchanged.
 
 If you already run the parlay tracker on a Supabase project, run only section 4 of the schema
 (the "Consolidated site tables") plus the `profiles_sleeper_user_idx` index and
-`claimed_sleeper_users` function from section 2 — the login tables are the same.
+`claimed_sleeper_users` function from section 2 — the login and parlay tables are the same.
 
 ### 2. Deploy to GitHub Pages
 
@@ -83,6 +84,18 @@ issues labelled `stat-suggestion` and writes the issue number back.
    `Authorization: Bearer <fine-grained PAT with Actions: write>`,
    `Accept: application/vnd.github+json` and body `{"event_type":"stat-suggestion"}`.
 
+### 5. Automatic odds for the parlay board (optional)
+
+Without this, odds are typed in by hand on each leg. With it, the Parlay → Odds board shows live
+lines and a leg picked from the board can be re-priced with one tap.
+
+1. Get a free API key from [the-odds-api.com](https://the-odds-api.com) (500 requests/month; the
+   schedule uses about 40).
+2. Add the **Secrets** `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (same as step 4) and
+   `ODDS_API_KEY`, and the **Variable** `ODDS_AUTOMATION_ENABLED` = `true`.
+3. Run the _Fetch NFL odds_ workflow once from the Actions tab; it then runs Tuesday, Thursday
+   and Sunday. Locally: `SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... ODDS_API_KEY=... npm run fetch-odds`.
+
 ## Development
 
 ```bash
@@ -107,9 +120,11 @@ src/features/standings/          standings math, history loader, all-time aggreg
 src/features/lottery/            engine (pure), Sleeper mapping, zustand store, screens
 src/features/keepers/            rules engine (pure), Sleeper assembly, boards
 src/features/stats/parseTable.ts NFL.com paste parser (pure)
+src/features/parlay/             odds/parlay math (pure), weeks/legs context, parlay pages
 scripts/file-suggestions.mjs     suggestions -> GitHub issues
+scripts/fetch-odds.mjs           The Odds API -> games / game_odds tables
 docs/keeper-rules.md             the league's keeper rules, codified
-.github/workflows/               CI + Pages deploy, suggestion filing
+.github/workflows/               CI + Pages deploy, suggestion filing, odds fetch
 ```
 
 ## Notes on the data

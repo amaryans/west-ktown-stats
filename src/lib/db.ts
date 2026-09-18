@@ -103,3 +103,68 @@ export interface StatEntry {
   created_at: string
   updated_at: string
 }
+
+// ---- Loser parlay tracker -------------------------------------------------
+
+export type ParlayResult = 'pending' | 'won' | 'lost' | 'push' | 'void'
+export type LegMarket = 'spread' | 'moneyline' | 'total' | 'prop' | 'other'
+
+export interface Week {
+  id: string
+  season: number
+  week: number
+  loser_id: string | null
+  low_score: number | null
+  stake: number
+  lock_at: string | null
+  parlay_result: ParlayResult
+  payout: number | null
+  notes: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface OddsRef {
+  market: 'h2h' | 'spreads' | 'totals'
+  outcome: string
+  point: number | null
+}
+
+export interface Leg {
+  id: string
+  week_id: string
+  user_id: string
+  game_id: string | null
+  game: string | null
+  market: LegMarket
+  pick: string
+  odds: number | null
+  odds_ref: OddsRef | null
+  result: ParlayResult
+  entered_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Game {
+  id: string
+  event_id: string
+  season: number
+  week: number
+  commence_time: string
+  home_team: string
+  away_team: string
+  updated_at: string
+}
+
+export interface GameOdds {
+  id: string
+  game_id: string
+  bookmaker: string
+  market: 'h2h' | 'spreads' | 'totals'
+  outcome: string
+  point: number | null
+  price: number
+  fetched_at: string
+}

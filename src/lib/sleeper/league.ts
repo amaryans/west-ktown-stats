@@ -99,3 +99,32 @@ export async function loadSleeperLeague(
 export function teamLabel(team: Pick<SleeperTeam, 'displayName' | 'teamName'>): string {
   return team.teamName ? `${team.displayName} · ${team.teamName}` : team.displayName
 }
+
+export interface LowScorer extends SleeperTeam {
+  points: number
+  week: number
+}
+
+/**
+ * Lowest-scoring roster for a fantasy week. Returns null if the week has no
+ * scores yet (all zeros), which is what Sleeper reports before games kick off.
+ */
+export async function lowestScorer(
+  leagueId: string,
+  week: number,
+  teams: SleeperTeam[],
+  client: SleeperClient = sleeper,
+): Promise<LowScorer | null> {
+  if (!week || week < 1) return null
+  const matchups = await client.getMatchups(leagueId, week)
+  const scored = matchups.filter((m) => m.points !== null && m.points !== undefined)
+  if (!scored.length || scored.every((m) => Number(m.points) === 0)) return null
+  const teamByRoster = new Map(teams.map((t) => [t.rosterId, t]))
+  let low: LowScorer | null = null
+  for (const m of scored) {
+    const team = teamByRoster.get(m.roster_id)
+    if (!team?.userId) continue
+    if (!low || Number(m.points) < low.points) low = { ...team, points: Number(m.points), week }
+  }
+  return low
+}

@@ -1036,6 +1036,102 @@
     color: var(--muted);
   }
 
+  /* ---------- Parlay ---------- */
+  .badge.result-won {
+    background: rgba(52, 211, 153, 0.18);
+    color: var(--good);
+  }
+  .badge.result-lost {
+    background: rgba(248, 113, 113, 0.18);
+    color: var(--bad);
+  }
+  .badge.result-push,
+  .badge.result-void {
+    background: rgba(167, 139, 250, 0.18);
+    color: #a78bfa;
+  }
+  .badge.result-pending {
+    background: rgba(251, 191, 36, 0.15);
+    color: var(--warn);
+  }
+  .badge.locked {
+    background: rgba(148, 163, 184, 0.15);
+    color: var(--muted);
+  }
+  .odds {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+  }
+  .odds.plus {
+    color: var(--good);
+  }
+  .loser-callout {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 0.9rem 1rem;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(248, 113, 113, 0.18), rgba(251, 191, 36, 0.12));
+    border: 1px solid rgba(248, 113, 113, 0.35);
+  }
+  .loser-callout .big {
+    font-size: 1.4rem;
+    font-weight: 800;
+  }
+  .game {
+    border-top: 1px solid var(--border);
+    padding: 0.75rem 0;
+  }
+  .game:first-of-type {
+    border-top: none;
+  }
+  .game-title {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.4rem;
+    font-weight: 700;
+  }
+  .markets {
+    display: grid;
+    gap: 0.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
+  .market {
+    background: var(--bg-elev-2);
+    border-radius: 8px;
+    padding: 0.5rem 0.6rem;
+  }
+  .market .mk {
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.3rem;
+  }
+  .market button {
+    width: 100%;
+    justify-content: space-between;
+    margin-top: 0.3rem;
+    background: var(--bg);
+  }
+  .market button span:first-child {
+    text-align: left;
+    white-space: normal;
+  }
+  .rank {
+    font-weight: 800;
+    color: var(--muted);
+    width: 2rem;
+  }
+  .streak.hot {
+    color: var(--good);
+  }
+  .streak.cold {
+    color: var(--bad);
+  }
+
   /* ---------- Lottery wrapper ---------- */
   .lottery-shell {
     margin: 0 -1rem;
@@ -1081,8 +1177,9 @@
     flex: 1 1 0;
     flex-direction: column;
     gap: 0.15rem;
-    padding: 0.3rem 0.1rem;
-    font-size: 0.68rem;
+    padding: 0.3rem 0;
+    font-size: 0.6rem;
+    letter-spacing: -0.01em;
     min-width: 0;
     text-align: center;
     border-radius: 8px;
@@ -1167,5 +1264,49 @@
   }
   .standings tr.is-me {
     box-shadow: inset 3px 0 0 var(--accent);
+  }
+
+  /* Legs table becomes stacked cards on phones */
+  .legs-table thead {
+    display: none;
+  }
+  .legs-table tr {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 0.4rem 0.6rem;
+    align-items: center;
+    padding: 0.65rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .legs-table tr:last-child {
+    border-bottom: none;
+  }
+  .legs-table td {
+    display: block;
+    border: none;
+    padding: 0;
+  }
+  .legs-table td.member {
+    grid-column: 1 / -1;
+    font-weight: 700;
+  }
+  .legs-table td.pick {
+    grid-column: 1 / -1;
+  }
+  .legs-table td.odds-cell {
+    grid-column: 1;
+  }
+  .legs-table td.result-cell {
+    grid-column: 2;
+  }
+  .legs-table td.actions {
+    grid-column: 3;
+    text-align: right;
+  }
+  .legs-table td.actions button {
+    margin-left: 0.25rem;
+  }
+  .legs-table select {
+    min-width: 6.6rem;
   }
 }

@@ -7,6 +7,7 @@ const TABS = [
   { to: '/stats', label: 'Stats', icon: '📊' },
   { to: '/history', label: 'Standings', icon: '🏆' },
   { to: '/team', label: 'Team', icon: '🏈' },
+  { to: '/parlay', label: 'Parlay', icon: '🎰' },
   { to: '/settings', label: 'Settings', icon: '⚙️' },
 ]
 
