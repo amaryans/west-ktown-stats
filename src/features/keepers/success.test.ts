@@ -105,7 +105,7 @@ test('seasonOutcomes prices, ranks and measures each keeper', () => {
     keepRound: 2,
     keepPick: 4,
     adp: 1.5,
-    draftValue: -2.5,
+    draftValue: 2.5,
     points: 60,
     weeksRostered: 3,
     weeksStarted: 3,
@@ -126,7 +126,7 @@ test('seasonOutcomes prices, ranks and measures each keeper', () => {
   expect(d).toMatchObject({
     ownerName: 'Bob',
     keepPick: 2,
-    draftValue: 10,
+    draftValue: -10,
     points: 13,
     weeksStarted: 2,
     starterPoints: 11,
@@ -148,17 +148,31 @@ test('a season with no weeks played leaves performance and impact unknown', () =
   expect(a.finishRank).toBeNull()
   expect(a.performance).toBeNull()
   expect(a.impactShare).toBeNull()
-  expect(a.draftValue).toBe(-2.5)
+  expect(a.draftValue).toBe(2.5)
 })
 
 test('scoreKeepers averages percentiles over the known parts', () => {
   const scored = scoreKeepers(seasonOutcomes(input))
   const a = scored.find((r) => r.playerId === 'A')!
   const d = scored.find((r) => r.playerId === 'D')!
-  // A: draft value worst (0), performance best (1), impact best (1) -> 67.
-  expect(a.score).toBe(67)
-  // D: draft value best (1), performance worst (0), impact worst (0) -> 33.
-  expect(d.score).toBe(33)
+  // A is the better keeper on all three parts; D the worse.
+  expect(a.score).toBe(100)
+  expect(d.score).toBe(0)
+
+  // Give D the draft-day bargain instead: the score is the mean of the three parts.
+  const mixed = scoreKeepers(
+    seasonOutcomes({
+      ...input,
+      adpByName: new Map([
+        ['player a', 10],
+        ['player d', 1],
+      ]),
+    }),
+  )
+  expect(mixed.find((r) => r.playerId === 'A')!.draftValue).toBe(-6)
+  expect(mixed.find((r) => r.playerId === 'D')!.draftValue).toBe(1)
+  expect(mixed.find((r) => r.playerId === 'A')!.score).toBe(67)
+  expect(mixed.find((r) => r.playerId === 'D')!.score).toBe(33)
 
   // With ADP missing, the score is the mean of the two remaining parts.
   const noAdp = scoreKeepers(seasonOutcomes({ ...input, adpByName: new Map() }))
@@ -177,11 +191,11 @@ test('managerRecords aggregates per manager, best average first', () => {
   const ann = records[0]!
   expect(ann.keepers).toBe(1)
   expect(ann.seasons).toBe(1)
-  expect(ann.avgScore).toBe(67)
+  expect(ann.avgScore).toBe(100)
   expect(ann.hits).toBe(1)
   expect(ann.best?.playerId).toBe('A')
   expect(ann.latestTeamName).toBe('Ann FC')
   const bob = records[1]!
   expect(bob.hits).toBe(0)
-  expect(bob.avgDraftValue).toBe(10)
+  expect(bob.avgDraftValue).toBe(-10)
 })
