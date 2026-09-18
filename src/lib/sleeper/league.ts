@@ -128,3 +128,41 @@ export async function lowestScorer(
   }
   return low
 }
+
+const SEASON_CACHE_PREFIX = 'wkt.season:v1:'
+const inflight = new Map<string, Promise<SleeperLeagueInfo>>()
+
+/**
+ * A season's teams and rosters, cached: in memory for this page load and,
+ * for completed seasons (whose rosters never change), in localStorage.
+ */
+export function loadSleeperLeagueCached(
+  leagueId: string,
+  client: SleeperClient = sleeper,
+): Promise<SleeperLeagueInfo> {
+  const existing = inflight.get(leagueId)
+  if (existing) return existing
+  try {
+    const raw = localStorage.getItem(SEASON_CACHE_PREFIX + leagueId)
+    if (raw) {
+      const cached = Promise.resolve(JSON.parse(raw) as SleeperLeagueInfo)
+      inflight.set(leagueId, cached)
+      return cached
+    }
+  } catch {
+    /* ignore */
+  }
+  const promise = loadSleeperLeague(leagueId, client).then((info) => {
+    if (info.status === 'complete') {
+      try {
+        localStorage.setItem(SEASON_CACHE_PREFIX + leagueId, JSON.stringify(info))
+      } catch {
+        /* quota or private mode */
+      }
+    }
+    return info
+  })
+  promise.catch(() => inflight.delete(leagueId))
+  inflight.set(leagueId, promise)
+  return promise
+}

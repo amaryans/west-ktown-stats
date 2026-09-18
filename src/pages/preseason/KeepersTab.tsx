@@ -40,9 +40,30 @@ export default function KeepersTab() {
     }
   }, [leagueId])
 
+  // Seasons whose keepers can be recorded: finished ones, plus the current
+  // season once its draft has been held (Sleeper marks the draft complete).
+  const [draftedIds, setDraftedIds] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    const pending = chain.leagues.filter((l) => l.status !== 'complete')
+    if (pending.length === 0) return
+    let active = true
+    Promise.all(
+      pending.map((l) =>
+        sleeper
+          .getDrafts(l.league_id)
+          .then((drafts) => (drafts.some((d) => d.status === 'complete') ? l.league_id : null))
+          .catch(() => null),
+      ),
+    ).then((ids) => {
+      if (active) setDraftedIds(new Set(ids.filter((id): id is string => id !== null)))
+    })
+    return () => {
+      active = false
+    }
+  }, [chain.leagues])
   const completed = useMemo(
-    () => chain.leagues.filter((l) => l.status === 'complete'),
-    [chain.leagues],
+    () => chain.leagues.filter((l) => l.status === 'complete' || draftedIds.has(l.league_id)),
+    [chain.leagues, draftedIds],
   )
   const [chosenLeagueId, setChosenLeagueId] = useState<string | null>(null)
   // Default to the most recent completed season (the one the upcoming draft reads from).
@@ -101,21 +122,24 @@ export default function KeepersTab() {
                   const saved = savedLists.find((s) => s.season === Number(l.season))
                   return (
                     <option key={l.league_id} value={l.league_id}>
-                      {l.season} season{saved ? ` · ${saved.playerIds.length} saved` : ''}
+                      {l.season} season{l.status !== 'complete' ? ' (drafted)' : ''}
+                      {saved ? ` · ${saved.playerIds.length} saved` : ''}
                     </option>
                   )
                 })}
               </select>
             </label>
             <span className="small muted">
-              Sets up the {Number(activeLeague.season) + 1} draft boards. Pick an earlier year to
-              record who was kept then.
+              {activeLeague.status === 'complete'
+                ? `Sets up the ${Number(activeLeague.season) + 1} draft boards. Pick an earlier year to record who was kept then.`
+                : `The ${activeLeague.season} draft is done: record who was kept in it. The boards it sets up are for ${Number(activeLeague.season) + 1}.`}
             </span>
           </div>
           <Suspense fallback={<div className="loading">Loading keepers…</div>}>
             <KeepersApp
               key={activeLeague.league_id}
               leagueId={activeLeague.league_id}
+              exact={activeLeague.status !== 'complete'}
               savedLists={savedLists}
               canSave={isCommissioner}
               onSave={(list) =>

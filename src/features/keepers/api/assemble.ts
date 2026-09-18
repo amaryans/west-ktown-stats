@@ -64,12 +64,15 @@ const MAX_CHAIN_HOPS = 4
 export async function resolvePreviousLeague(
   client: SleeperClient,
   enteredLeagueId: string,
+  options: { exact?: boolean } = {},
 ): Promise<{ entered: SleeperLeague; previous: SleeperLeague; warnings: string[] }> {
   const entered = await client.getLeague(enteredLeagueId)
   const warnings: string[] = []
   let current = entered
   let hops = 0
-  while (current.status !== 'complete') {
+  // `exact` reads the entered season itself even if it is still in progress:
+  // once its draft is done, the keepers used in it can be recorded.
+  while (!options.exact && current.status !== 'complete') {
     if (!current.previous_league_id) {
       throw new UnsupportedLeagueError(
         `League "${current.name}" (${current.season}) has not completed its season and has no ` +
@@ -97,9 +100,11 @@ export async function resolvePreviousLeague(
 export async function assembleFromLeagueId(
   client: SleeperClient,
   enteredLeagueId: string,
-  options: { playersDump?: Record<string, SleeperPlayer> } = {},
+  options: { playersDump?: Record<string, SleeperPlayer>; exact?: boolean } = {},
 ): Promise<AssembledData> {
-  const { entered, previous, warnings } = await resolvePreviousLeague(client, enteredLeagueId)
+  const { entered, previous, warnings } = await resolvePreviousLeague(client, enteredLeagueId, {
+    exact: options.exact,
+  })
 
   const [rosters, users, drafts, transactions] = await Promise.all([
     client.getRosters(previous.league_id),
