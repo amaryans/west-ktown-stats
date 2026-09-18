@@ -30,7 +30,7 @@ npm test
 
 ## Deploying
 
-`.github/workflows/pages.yml` runs the tests and deploys the site to GitHub Pages on every push to `main`. In the repository settings, set **Pages → Source** to **GitHub Actions** once.
+`.github/workflows/pages.yml` runs the tests and deploys the site to GitHub Pages on every push to `main`. The workflow enables Pages (with GitHub Actions as the source) on its first run.
 
 ## How the numbers are computed
 
