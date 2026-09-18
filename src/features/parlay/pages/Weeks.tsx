@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { SortableTh, useSortable, type SortColumn } from '../../../components/sortable.tsx'
+import type { Week } from '../../../lib/db.ts'
 import { Link } from 'react-router-dom'
 import { errorMessage, useLeague } from '../../../context/LeagueContext.tsx'
 import { useParlay } from '../ParlayContext.tsx'
@@ -19,6 +21,23 @@ export default function Weeks() {
     return String(n)
   })
   const [error, setError] = useState<string | null>(null)
+  const columns = useMemo<SortColumn<Week>[]>(
+    () => [
+      { key: 'week', label: 'Week', get: (w) => w.season * 100 + w.week, defaultDir: 'desc' },
+      { key: 'placer', label: 'Placed by', get: (w) => (w.loser_id ? nameOf(w.loser_id) : null) },
+      { key: 'legs', label: 'Legs', get: (w) => legsForWeek(w.id).length, className: 'num' },
+      {
+        key: 'odds',
+        label: 'Odds',
+        get: (w) => parlayOdds(legsForWeek(w.id)).decimal,
+        className: 'num',
+      },
+      { key: 'stake', label: 'Stake', get: (w) => Number(w.stake), className: 'num' },
+      { key: 'result', label: 'Result', get: (w) => w.parlay_result },
+    ],
+    [nameOf, legsForWeek],
+  )
+  const { sort, toggle, sorted } = useSortable(weeks, columns)
 
   async function create() {
     setError(null)
@@ -50,12 +69,9 @@ export default function Weeks() {
           <table>
             <thead>
               <tr>
-                <th>Week</th>
-                <th>Placed by</th>
-                <th className="num">Legs</th>
-                <th className="num">Odds</th>
-                <th className="num">Stake</th>
-                <th>Result</th>
+                {columns.map((c) => (
+                  <SortableTh key={c.key} column={c} sort={sort} onToggle={toggle} />
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -66,7 +82,7 @@ export default function Weeks() {
                   </td>
                 </tr>
               )}
-              {weeks.map((w) => {
+              {sorted.map((w) => {
                 const legs = legsForWeek(w.id)
                 const { american } = parlayOdds(legs)
                 return (

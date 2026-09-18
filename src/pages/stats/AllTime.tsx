@@ -1,15 +1,43 @@
 import { useMemo } from 'react'
 import Avatar from '../../components/Avatar.tsx'
+import { SortableTh, useSortable, type SortColumn } from '../../components/sortable.tsx'
 import HistoryStatus from '../../components/HistoryStatus.tsx'
 import { useLeague } from '../../context/LeagueContext.tsx'
-import { careers } from '../../features/standings/alltime.ts'
-import { fmtPts, teamAvatarSrc } from '../../features/standings/SeasonTable.tsx'
+import { careers, type OwnerCareer } from '../../features/standings/alltime.ts'
+import { fmtPts, recordSortValue, teamAvatarSrc } from '../../features/standings/SeasonTable.tsx'
 import { formatRecord } from '../../features/standings/standings.ts'
 import { ordinal } from '../team/TeamPage.tsx'
 
 export default function AllTime() {
   const { history, me } = useLeague()
   const rows = useMemo(() => (history.data ? careers(history.data) : []), [history.data])
+  const columns = useMemo<SortColumn<OwnerCareer>[]>(
+    () => [
+      { key: 'manager', label: 'Manager', get: (c) => c.ownerName },
+      { key: 'seasons', label: 'Seasons', get: (c) => c.seasonsPlayed, className: 'num' },
+      { key: 'record', label: 'Record', get: (c) => recordSortValue(c.h2h), className: 'num' },
+      { key: 'winpct', label: 'Win %', get: (c) => c.winPct, className: 'num' },
+      { key: 'median', label: 'vs Med', get: (c) => recordSortValue(c.median), className: 'num' },
+      { key: 'pf', label: 'PF', get: (c) => c.pointsFor, className: 'num' },
+      { key: 'pa', label: 'PA', get: (c) => c.pointsAgainst, className: 'num' },
+      {
+        key: 'avgrank',
+        label: 'Avg rank',
+        get: (c) => c.averageRank,
+        defaultDir: 'asc',
+        className: 'num',
+      },
+      { key: 'titles', label: 'Titles', get: (c) => c.championships, className: 'num' },
+      {
+        key: 'bestweek',
+        label: 'Best week',
+        get: (c) => c.highestWeek?.points ?? null,
+        className: 'num',
+      },
+    ],
+    [],
+  )
+  const { sort, toggle, sorted } = useSortable(rows, columns)
 
   return (
     <div className="stack">
@@ -28,20 +56,13 @@ export default function AllTime() {
               <thead>
                 <tr>
                   <th className="num">#</th>
-                  <th>Manager</th>
-                  <th className="num">Seasons</th>
-                  <th className="num">Record</th>
-                  <th className="num">Win %</th>
-                  <th className="num">vs Med</th>
-                  <th className="num">PF</th>
-                  <th className="num">PA</th>
-                  <th className="num">Avg rank</th>
-                  <th className="num">Titles</th>
-                  <th className="num">Best week</th>
+                  {columns.map((c) => (
+                    <SortableTh key={c.key} column={c} sort={sort} onToggle={toggle} />
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {rows.map((c, i) => (
+                {sorted.map((c, i) => (
                   <tr
                     key={c.ownerId}
                     className={c.ownerId === me?.sleeper_user_id ? 'me' : undefined}

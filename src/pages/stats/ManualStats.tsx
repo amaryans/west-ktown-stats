@@ -1,5 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { SortableTh, useSortable, type SortColumn } from '../../components/sortable.tsx'
 import { errorMessage, useLeague } from '../../context/LeagueContext.tsx'
 import {
   guessSubjectColumn,
@@ -444,7 +445,20 @@ function EntriesTable({ definition, season }: { definition: StatDefinition; seas
         .map((e) => e.week),
     ),
   ].sort((a, b) => a - b)
-  const sorted = [...entries].sort((a, b) => a.week - b.week || b.value - a.value)
+  const columns = useMemo<SortColumn<StatEntry>[]>(
+    () => [
+      { key: 'subject', label: subjectLabel(definition), get: (e) => e.subject },
+      { key: 'week', label: 'Week', get: (e) => e.week, defaultDir: 'asc' },
+      { key: 'value', label: definition.unit ?? 'Value', get: (e) => e.value, className: 'num' },
+      { key: 'by', label: 'Entered by', get: (e) => nameOf(e.entered_by) },
+    ],
+    [definition, nameOf],
+  )
+  const baseOrder = useMemo(
+    () => [...entries].sort((a, b) => a.week - b.week || b.value - a.value),
+    [entries],
+  )
+  const { sort, toggle, sorted } = useSortable(baseOrder, columns)
   const canEdit = (e: StatEntry) => isCommissioner || e.entered_by === me?.id
 
   async function save(e: StatEntry) {
@@ -502,10 +516,9 @@ function EntriesTable({ definition, season }: { definition: StatDefinition; seas
             <thead>
               <tr>
                 <th className="num">#</th>
-                <th>{subjectLabel(definition)}</th>
-                <th>Week</th>
-                <th className="num">{definition.unit ?? 'Value'}</th>
-                <th>Entered by</th>
+                {columns.map((c) => (
+                  <SortableTh key={c.key} column={c} sort={sort} onToggle={toggle} />
+                ))}
                 <th />
               </tr>
             </thead>

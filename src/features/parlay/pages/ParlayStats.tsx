@@ -1,4 +1,7 @@
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import { SortableTh, useSortable, type SortColumn } from '../../../components/sortable.tsx'
+import type { Week } from '../../../lib/db.ts'
 import { useLeague } from '../../../context/LeagueContext.tsx'
 import { useParlay } from '../ParlayContext.tsx'
 import { formatAmerican, formatMoney, formatPct, parlayOdds } from '../lib/odds.ts'
@@ -16,7 +19,53 @@ export default function ParlayStats() {
   const { weeks, legs, legsForWeek } = useParlay()
   const members = rankMembers(computeMemberStats({ profiles, weeks, legs }))
   const league = computeLeagueStats({ weeks, legs })
-  const settledWeeks = weeks.filter((w) => w.parlay_result !== 'pending')
+  const settledWeeks = useMemo(() => weeks.filter((w) => w.parlay_result !== 'pending'), [weeks])
+
+  const memberColumns = useMemo<SortColumn<MemberStats>[]>(
+    () => [
+      { key: 'member', label: 'Member', get: (m) => m.profile.display_name },
+      { key: 'wlp', label: 'W-L-P', get: (m) => m.won * 1000 - m.lost, className: 'num' },
+      { key: 'hit', label: 'Hit %', get: (m) => m.hitRate, className: 'num' },
+      { key: 'avgodds', label: 'Avg odds', get: (m) => m.avgOdds, className: 'num' },
+      { key: 'edge', label: 'vs implied', get: (m) => m.edge, className: 'num' },
+      { key: 'streak', label: 'Streak', get: (m) => m.currentStreak, className: 'num' },
+      { key: 'best', label: 'Best', get: (m) => m.bestStreak, className: 'num' },
+      { key: 'placed', label: 'Placed', get: (m) => m.timesLoser, className: 'num' },
+      {
+        key: 'net',
+        label: 'Placer net',
+        get: (m) => (m.timesLoser ? m.net : null),
+        className: 'num',
+      },
+    ],
+    [],
+  )
+  const memberSort = useSortable(members, memberColumns)
+  const rankOf = useMemo(() => new Map(members.map((m, i) => [m.profile.id, i + 1])), [members])
+
+  const historyColumns = useMemo<SortColumn<Week>[]>(
+    () => [
+      { key: 'week', label: 'Week', get: (w) => w.season * 100 + w.week, defaultDir: 'desc' },
+      { key: 'placer', label: 'Placed by', get: (w) => (w.loser_id ? nameOf(w.loser_id) : null) },
+      { key: 'legs', label: 'Legs', get: (w) => legsForWeek(w.id).length, className: 'num' },
+      {
+        key: 'odds',
+        label: 'Odds',
+        get: (w) => parlayOdds(legsForWeek(w.id)).decimal,
+        className: 'num',
+      },
+      { key: 'stake', label: 'Stake', get: (w) => Number(w.stake), className: 'num' },
+      {
+        key: 'payout',
+        label: 'Payout',
+        get: (w) => historyPayout(w, legsForWeek(w.id)),
+        className: 'num',
+      },
+      { key: 'result', label: 'Result', get: (w) => w.parlay_result },
+    ],
+    [nameOf, legsForWeek],
+  )
+  const historySort = useSortable(settledWeeks, historyColumns)
 
   // Superlatives: everyone tied at the top gets named, nobody is crowned on a tie.
   const leaders = (list: MemberStats[], key: 'timesLoser' | 'net' | 'parlaysSunk') => {
@@ -104,26 +153,25 @@ export default function ParlayStats() {
             <thead>
               <tr>
                 <th className="rank">#</th>
-                <th>Member</th>
-                <th className="num">W-L-P</th>
-                <th className="num">Hit %</th>
-                <th className="num">Avg odds</th>
-                <th className="num">vs implied</th>
-                <th className="num">Streak</th>
-                <th className="num">Best</th>
-                <th className="num">Placed</th>
-                <th className="num">Placer net</th>
+                {memberColumns.map((c) => (
+                  <SortableTh
+                    key={c.key}
+                    column={c}
+                    sort={memberSort.sort}
+                    onToggle={memberSort.toggle}
+                  />
+                ))}
               </tr>
             </thead>
             <tbody>
-              {members.map((m, i) => (
+              {memberSort.sorted.map((m) => (
                 <tr
                   key={m.profile.id}
                   className={
                     m.profile.id === me?.id ? 'me' : m.won + m.lost === 0 ? 'dim' : undefined
                   }
                 >
-                  <td className="rank">{m.won + m.lost >= 3 ? i + 1 : '–'}</td>
+                  <td className="rank">{m.won + m.lost >= 3 ? rankOf.get(m.profile.id) : '–'}</td>
                   <td className="nowrap">{m.profile.display_name}</td>
                   <td className="num nowrap">
                     {m.won}-{m.lost}-{m.push}
@@ -168,13 +216,14 @@ export default function ParlayStats() {
           <table>
             <thead>
               <tr>
-                <th>Week</th>
-                <th>Placed by</th>
-                <th className="num">Legs</th>
-                <th className="num">Odds</th>
-                <th className="num">Stake</th>
-                <th className="num">Payout</th>
-                <th>Result</th>
+                {historyColumns.map((c) => (
+                  <SortableTh
+                    key={c.key}
+                    column={c}
+                    sort={historySort.sort}
+                    onToggle={historySort.toggle}
+                  />
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -215,6 +264,13 @@ export default function ParlayStats() {
       </div>
     </div>
   )
+}
+
+function historyPayout(w: Week, legs: Parameters<typeof parlayOdds>[0]): number | null {
+  if (w.parlay_result !== 'won') return null
+  if (w.payout !== null && w.payout !== undefined) return Number(w.payout)
+  const { decimal } = parlayOdds(legs)
+  return decimal ? decimal * Number(w.stake) : null
 }
 
 function Superlative({ label, name, detail }: { label: string; name: string; detail: string }) {
