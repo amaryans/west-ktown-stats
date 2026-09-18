@@ -71,6 +71,7 @@ export function MemberSelect({
           <option key={p.id} value={p.id}>
             {p.display_name}
             {p.team_name ? ` (${p.team_name})` : ''}
+            {p.is_placeholder ? ' · not signed up' : ''}
           </option>
         ))}
     </select>

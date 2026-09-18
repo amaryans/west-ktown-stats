@@ -56,6 +56,14 @@ export interface LeagueValue extends DataState {
   updateSettings: (fields: Partial<LeagueSettings>) => Promise<void>
   updateProfile: (fields: Partial<Profile>) => Promise<void>
   updateMember: (id: string, fields: Partial<Profile>) => Promise<void>
+  /** Commissioner: list Sleeper teams as members before those people sign up. */
+  addPlaceholderMembers: (
+    rows: Pick<Profile, 'display_name' | 'team_name' | 'sleeper_user_id'>[],
+  ) => Promise<void>
+  /** Commissioner: remove a placeholder member (real accounts cannot be deleted here). */
+  deletePlaceholderMember: (id: string) => Promise<void>
+  /** Sleeper teams in the current season that no member (real or placeholder) holds. */
+  unlistedSleeperTeams: SleeperLeagueInfo['teams']
   upsertDraftOrder: (
     fields: Omit<DraftOrder, 'id' | 'created_by' | 'created_at' | 'updated_at'>,
   ) => Promise<void>
@@ -225,6 +233,11 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
     }
   }, [sleeperLeagueId])
 
+  const unlistedSleeperTeams = useMemo(() => {
+    const held = new Set(state.profiles.map((p) => p.sleeper_user_id).filter(Boolean))
+    return (sleeper.data?.teams ?? []).filter((t) => t.userId && !held.has(t.userId))
+  }, [sleeper.data, state.profiles])
+
   const profileById = useCallback(
     (id: string | null | undefined) => state.profiles.find((p) => p.id === id) ?? null,
     [state.profiles],
@@ -255,6 +268,11 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
     updateProfile: (fields) => run(supabase.from('profiles').update(fields).eq('id', uid)),
     // Commissioner only (RLS enforces it): edit any member's profile.
     updateMember: (id, fields) => run(supabase.from('profiles').update(fields).eq('id', id)),
+    addPlaceholderMembers: (rows) =>
+      run(supabase.from('profiles').insert(rows.map((r) => ({ ...r, is_placeholder: true })))),
+    deletePlaceholderMember: (id) =>
+      run(supabase.from('profiles').delete().eq('id', id).eq('is_placeholder', true)),
+    unlistedSleeperTeams,
     upsertDraftOrder: (fields) =>
       run(
         supabase

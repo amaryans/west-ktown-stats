@@ -1,11 +1,21 @@
 import { useState } from 'react'
+import AddMissingMembers from '../../components/AddMissingMembers.tsx'
 import SleeperTeamSelect from '../../components/SleeperTeamSelect.tsx'
 import { errorMessage, useLeague } from '../../context/LeagueContext.tsx'
 import type { Profile } from '../../lib/db.ts'
 
 export default function MembersSettings() {
-  const { profiles, me, sleeper, updateMember } = useLeague()
+  const { profiles, me, sleeper, updateMember, deletePlaceholderMember } = useLeague()
   const [memberMsg, setMemberMsg] = useState<string | null>(null)
+
+  async function act(fn: () => Promise<void>) {
+    setMemberMsg(null)
+    try {
+      await fn()
+    } catch (err) {
+      setMemberMsg(errorMessage(err))
+    }
+  }
 
   async function member(id: string, fields: Partial<Profile>) {
     setMemberMsg(null)
@@ -55,10 +65,6 @@ export default function MembersSettings() {
     }
   }
 
-  const unclaimed = (sleeper.data?.teams ?? []).filter(
-    (t) => t.userId && !profiles.some((p) => p.sleeper_user_id === t.userId),
-  )
-
   return (
     <div className="card stack">
       <div className="card-header">
@@ -73,9 +79,12 @@ export default function MembersSettings() {
       </div>
       <p className="muted small">
         Each member claims their Sleeper team when they sign up or in their profile; fix any
-        mistakes here. Commissioners can change league settings, define stats and publish shared
-        data; there must always be at least one.
+        mistakes here. Members marked &quot;not signed up&quot; are placeholders you added from
+        Sleeper so they show in the parlay tables; they merge into the real account when that person
+        signs up with the same team. Commissioners can change league settings, define stats and
+        publish shared data; there must always be at least one.
       </p>
+      <AddMissingMembers />
       <div className="table-wrap">
         <table>
           <thead>
@@ -89,7 +98,14 @@ export default function MembersSettings() {
           <tbody>
             {profiles.map((p) => (
               <tr key={p.id} className={p.id === me?.id ? 'me' : undefined}>
-                <td className="nowrap">{p.display_name}</td>
+                <td className="nowrap">
+                  {p.display_name}
+                  {p.is_placeholder && (
+                    <span className="badge" style={{ marginLeft: '0.4rem' }}>
+                      not signed up
+                    </span>
+                  )}
+                </td>
                 <td className="muted">{p.team_name ?? '—'}</td>
                 <td>
                   <SleeperTeamSelect
@@ -100,24 +116,35 @@ export default function MembersSettings() {
                   />
                 </td>
                 <td>
-                  <input
-                    type="checkbox"
-                    aria-label={`${p.display_name} is commissioner`}
-                    checked={p.is_commissioner}
-                    onChange={(e) => void member(p.id, { is_commissioner: e.target.checked })}
-                  />
+                  {p.is_placeholder ? (
+                    <button
+                      type="button"
+                      className="small danger"
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            `Remove placeholder ${p.display_name}? Their parlay legs go with them.`,
+                          )
+                        )
+                          void act(() => deletePlaceholderMember(p.id))
+                      }}
+                    >
+                      Remove
+                    </button>
+                  ) : (
+                    <input
+                      type="checkbox"
+                      aria-label={`${p.display_name} is commissioner`}
+                      checked={p.is_commissioner}
+                      onChange={(e) => void member(p.id, { is_commissioner: e.target.checked })}
+                    />
+                  )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      {unclaimed.length > 0 && (
-        <p className="muted small">
-          Sleeper teams nobody has claimed yet:{' '}
-          {unclaimed.map((t) => t.teamName ?? t.displayName).join(', ')}.
-        </p>
-      )}
       {memberMsg && <div className="small">{memberMsg}</div>}
     </div>
   )
