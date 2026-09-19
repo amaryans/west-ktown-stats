@@ -198,6 +198,44 @@ export function computeSeason({ rosters, users, matchupsByWeek }: ComputeSeasonI
   return { teams: list, weeksPlayed }
 }
 
+/**
+ * Standings from the season totals Sleeper keeps on each roster, for seasons
+ * with no weekly matchups: history the commissioner added to Sleeper from
+ * before the league moved there. No weekly data, so no median games.
+ */
+export function teamsFromRosterSettings(
+  rosters: readonly SleeperRoster[],
+  users: readonly SleeperUser[],
+): SeasonTeam[] {
+  const usersById = new Map((users || []).map((u) => [u.user_id, u]))
+  return (rosters || []).map((r) => {
+    const owner = r.owner_id ? usersById.get(r.owner_id) : undefined
+    const meta = owner?.metadata ?? {}
+    const displayName = owner?.display_name || 'Unknown owner'
+    const st = r.settings
+    const h2h = { wins: num(st?.wins), losses: num(st?.losses), ties: num(st?.ties) }
+    return {
+      rosterId: r.roster_id,
+      ownerId: r.owner_id || null,
+      ownerName: displayName,
+      teamName: meta.team_name || displayName,
+      avatar: owner?.avatar || null,
+      teamAvatarUrl: meta.avatar || null,
+      h2h,
+      median: emptyLine(),
+      combined: h2h,
+      pointsFor: round2(num(st?.fpts) + num(st?.fpts_decimal) / 100),
+      pointsAgainst: round2(num(st?.fpts_against) + num(st?.fpts_against_decimal) / 100),
+      weekly: [],
+    }
+  })
+}
+
+/** True when at least one roster carries a season record (wins or losses). */
+export function rostersHaveRecords(rosters: readonly SleeperRoster[]): boolean {
+  return (rosters || []).some((r) => num(r.settings?.wins) + num(r.settings?.losses) > 0)
+}
+
 /** Sort teams for display. Tiebreaker after win percentage is points for (Sleeper's default). */
 export function rank(teams: readonly SeasonTeam[], mode: RankMode): RankedTeam[] {
   const key = mode === 'combined' ? 'combined' : 'h2h'

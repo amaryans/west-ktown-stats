@@ -155,8 +155,9 @@ docs/keeper-rules.md             the league's keeper rules, codified
 
 ## Notes on the data
 
-- Seasons from before the league was on Sleeper are typed in by the commissioner under Settings →
-  Past seasons (team, manager, record, points, playoff finish; rows can be pasted from a
+- Seasons the commissioner added to Sleeper's league history from another platform (season
+  records, no games) are read from Sleeper automatically and shown as "final standings as recorded
+  on Sleeper". Other seasons from before Sleeper are typed in under Settings → Past seasons (team, manager, record, points, playoff finish; rows can be pasted from a
   spreadsheet). They appear in the standings history, the all-time table and each manager's team
   history marked as pre-Sleeper. They have no weekly scores, so no games-vs-median split and no
   best week, and the keeper stats skip them. A past manager is linked to their Sleeper account

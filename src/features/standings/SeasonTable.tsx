@@ -164,13 +164,17 @@ export default function SeasonSection({
   highlightOwnerId?: string | null
 }) {
   const [medianOn, setMedianOn] = useState(season.medianEnabled)
-  const manual = season.source === 'manual'
+  // Seasons with only final totals: typed in here, or added to Sleeper without games.
+  const manual = season.source === 'manual' || season.source === 'sleeper-summary'
   const played = season.weeksPlayed.length
   const subtitleParts: string[] = []
-  if (manual) {
+  if (season.source === 'manual') {
     subtitleParts.push(
       `Final standings${season.sourceName ? ` from ${season.sourceName}` : ''}, before Sleeper`,
     )
+    subtitleParts.push('No weekly data, so no games vs. median')
+  } else if (season.source === 'sleeper-summary') {
+    subtitleParts.push('Final standings as recorded on Sleeper')
     subtitleParts.push('No weekly data, so no games vs. median')
   } else {
     if (played === 0) subtitleParts.push('No games played yet')

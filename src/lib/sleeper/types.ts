@@ -11,6 +11,8 @@ export interface SleeperLeague {
   previous_league_id: string | null
   total_rosters: number
   draft_id?: string | null
+  /** Free-form; `latest_league_winner_roster_id` names the previous season's champion. */
+  metadata?: Record<string, string | null | undefined> | null
   settings?: {
     playoff_week_start?: number
     league_average_match?: number
