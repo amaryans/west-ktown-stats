@@ -199,6 +199,34 @@ async function main() {
         )
       }
     }
+    // League Settings → League History lives here. Print it in full, and
+    // check whether a browser on another origin would be allowed to ask.
+    for (const id of seen) {
+      const r = await gql(
+        `{ get_league_manual_history(league_id: "${id}") { season league_notes import_data season_standings top_standings } }`,
+      )
+      console.log(`\n=== get_league_manual_history(${id}): ${r.status}`)
+      console.log(JSON.stringify(r.json ?? r.text, null, 1).slice(0, 12000))
+    }
+    const cors = await fetch('https://sleeper.com/graphql', {
+      method: 'OPTIONS',
+      headers: {
+        origin: 'https://amaryans.github.io',
+        'access-control-request-method': 'POST',
+        'access-control-request-headers': 'content-type',
+      },
+    })
+    console.log(
+      `\n=== CORS preflight: ${cors.status} allow-origin=${cors.headers.get('access-control-allow-origin')} allow-headers=${cors.headers.get('access-control-allow-headers')} allow-methods=${cors.headers.get('access-control-allow-methods')}`,
+    )
+    const post = await fetch('https://sleeper.com/graphql', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'https://amaryans.github.io' },
+      body: JSON.stringify({ query: '{ __typename }' }),
+    })
+    console.log(
+      `=== CORS on POST: ${post.status} allow-origin=${post.headers.get('access-control-allow-origin')}`,
+    )
     // Direct tries that need no schema knowledge.
     for (const query of [
       `{ league_history(league_id: "${first}") { season } }`,
