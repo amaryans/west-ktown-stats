@@ -33,6 +33,8 @@ interface DataState {
   draftOrders: DraftOrder[]
   keeperLists: KeeperList[]
   legacySeasons: LegacySeason[]
+  /** The legacy_seasons table is missing: the migration has not been run on this database. */
+  legacyTableMissing: boolean
   suggestions: StatSuggestion[]
   statDefinitions: StatDefinition[]
   statEntries: StatEntry[]
@@ -104,6 +106,7 @@ const EMPTY: DataState = {
   draftOrders: [],
   keeperLists: [],
   legacySeasons: [],
+  legacyTableMissing: false,
   suggestions: [],
   statDefinitions: [],
   statEntries: [],
@@ -142,12 +145,14 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
         .order('week', { ascending: false })
         .order('value', { ascending: false }),
     ])
+    // legacy_seasons arrived in a later migration: a database without it still loads.
+    const legacyTableMissing = Boolean(legacySeasons.error && isMissingTable(legacySeasons.error))
     const failed = [
       settings,
       profiles,
       draftOrders,
       keeperLists,
-      legacySeasons,
+      ...(legacyTableMissing ? [] : [legacySeasons]),
       suggestions,
       statDefinitions,
       statEntries,
@@ -163,7 +168,8 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
       profiles: (profiles.data ?? []) as Profile[],
       draftOrders: (draftOrders.data ?? []) as DraftOrder[],
       keeperLists: (keeperLists.data ?? []) as KeeperList[],
-      legacySeasons: (legacySeasons.data ?? []) as LegacySeason[],
+      legacySeasons: legacyTableMissing ? [] : ((legacySeasons.data ?? []) as LegacySeason[]),
+      legacyTableMissing,
       suggestions: (suggestions.data ?? []) as StatSuggestion[],
       statDefinitions: (statDefinitions.data ?? []) as StatDefinition[],
       statEntries: (statEntries.data ?? []) as StatEntry[],
@@ -339,6 +345,12 @@ export function useLeague(): LeagueValue {
   const value = useContext(LeagueContext)
   if (!value) throw new Error('useLeague must be used inside LeagueProvider')
   return value
+}
+
+/** PostgREST's answer when a table is not in its schema cache (not created yet). */
+export function isMissingTable(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false
+  return error.code === 'PGRST205' || /schema cache/i.test(error.message ?? '')
 }
 
 export function errorMessage(err: unknown): string {
