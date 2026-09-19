@@ -51,6 +51,9 @@ async function main() {
         pick(league, ['status', 'previous_league_id', 'draft_id', 'total_rosters', 'season_type']),
       ),
     )
+    console.log('league keys:', Object.keys(league).join(', '))
+    const { scoring_settings, roster_positions, settings, ...rest } = league
+    console.log('league (without scoring/positions/settings):', JSON.stringify(rest))
     console.log('metadata:', JSON.stringify(league.metadata ?? null))
     console.log(
       'settings:',
@@ -73,10 +76,13 @@ async function main() {
       console.log(`rosters: ${rosters.length}`)
       for (const r of rosters) {
         const u = Array.isArray(users) ? users.find((x) => x.user_id === r.owner_id) : null
+        const meta = Object.fromEntries(
+          Object.entries(r.metadata ?? {}).filter(([k]) => !k.startsWith('p_nick_')),
+        )
         console.log(
           `  #${r.roster_id} owner=${r.owner_id} (${u?.display_name ?? '?'}) players=${r.players?.length ?? 0}`,
           JSON.stringify(r.settings ?? null),
-          r.metadata ? `metadata=${JSON.stringify(r.metadata)}` : '',
+          Object.keys(meta).length ? `metadata=${JSON.stringify(meta)}` : '',
         )
       }
     } else console.log('rosters:', rosters)
@@ -97,6 +103,69 @@ async function main() {
         : drafts,
     )
     id = league.previous_league_id
+  }
+
+  // Where else Sleeper might keep history added from another platform.
+  const first = [...seen][0]
+  console.log(`\n=== probes for ${first}`)
+  for (const path of [
+    'history',
+    'legacy',
+    'legacy_leagues',
+    'legacy_history',
+    'past_seasons',
+    'previous_seasons',
+    'seasons',
+    'trophies',
+    'champions',
+    'records',
+    'hall_of_fame',
+    'winners',
+    'losers_bracket',
+  ]) {
+    const res = await fetch(`${BASE}/league/${first}/${path}`)
+    const text = await res.text()
+    console.log(`  /league/{id}/${path}: ${res.status} ${text.slice(0, 400)}`)
+  }
+  for (const url of [
+    `https://api.sleeper.app/v1/league/${first}/history`,
+    `https://api.sleeper.com/league/${first}/history`,
+    `https://api.sleeper.com/leagues/${first}/history`,
+    `https://api.sleeper.com/league/${first}`,
+  ]) {
+    const res = await fetch(url).catch((e) => ({ status: e.message, text: async () => '' }))
+    console.log(`  ${url}: ${res.status} ${(await res.text()).slice(0, 400)}`)
+  }
+  // GraphQL, which the Sleeper apps use: does introspection name a history type?
+  try {
+    const res = await fetch('https://sleeper.com/graphql', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        query: '{ __schema { queryType { fields { name } } types { name } } }',
+      }),
+    })
+    const text = await res.text()
+    const words = [
+      ...text.matchAll(/"name":"([^"]*(?:histor|legacy|past|season|trophy|champ|record)[^"]*)"/gi),
+    ].map((m) => m[1])
+    console.log(`  graphql introspection: ${res.status} matches=${[...new Set(words)].join(', ')}`)
+    console.log(`  graphql first 600 chars: ${text.slice(0, 600)}`)
+  } catch (err) {
+    console.log(`  graphql: ${err.message}`)
+  }
+
+  // Other leagues on the commissioner's account for earlier years (unlinked old seasons?).
+  const commissioner = process.env.SLEEPER_USER_ID || '984533936225239040'
+  console.log(`\n=== leagues for user ${commissioner} by season`)
+  for (let year = 2010; year <= 2023; year++) {
+    const leagues = await get(`/user/${commissioner}/leagues/nfl/${year}`).catch(() => [])
+    if (!Array.isArray(leagues) || leagues.length === 0) continue
+    for (const l of leagues) {
+      console.log(
+        `  ${year}: ${l.league_id} · ${l.name} · ${l.status} · ${l.total_rosters} teams · prev=${l.previous_league_id}`,
+      )
+    }
   }
 }
 
