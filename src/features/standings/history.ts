@@ -5,9 +5,15 @@
  */
 import { mapLimit, sleeper, type SleeperClient } from '../../lib/sleeper/client.ts'
 import type { SleeperLeague, SleeperMatchup, SleeperState } from '../../lib/sleeper/types.ts'
-import { computeSeason, regularSeasonWeeks, type SeasonTeam } from './standings.ts'
+import {
+  computeSeason,
+  regularSeasonWeeks,
+  rostersHaveRecords,
+  teamsFromRosterSettings,
+  type SeasonTeam,
+} from './standings.ts'
 
-const CACHE_PREFIX = 'wkt.history:v1:'
+const CACHE_PREFIX = 'wkt.history:v2:'
 const MAX_SEASONS = 30 // safety valve for the previous_league_id chain
 const CONCURRENCY = 6
 
@@ -25,8 +31,13 @@ export interface SeasonStandings {
   placements: Record<number, number>
   teams: SeasonTeam[]
   complete: boolean
-  /** 'manual' for a season typed in from before Sleeper (no weekly data); Sleeper otherwise. */
-  source?: 'sleeper' | 'manual'
+  /**
+   * Where the numbers came from: weekly Sleeper matchups (default), the season
+   * totals Sleeper keeps on rosters for history added to Sleeper without games
+   * ('sleeper-summary'), or standings typed into this site ('manual'). The
+   * latter two have no weekly data, so no games vs. median.
+   */
+  source?: 'sleeper' | 'sleeper-summary' | 'manual'
   /** For manual seasons: the platform the league was on that year. */
   sourceName?: string | null
 }
@@ -120,7 +131,15 @@ export async function loadSeason(
     }
   }
 
-  const { teams, weeksPlayed } = computeSeason({ rosters, users, matchupsByWeek })
+  let { teams, weeksPlayed } = computeSeason({ rosters, users, matchupsByWeek })
+  // History added to Sleeper from another platform has no matchups, only the
+  // season totals on each roster: use those so the season still counts.
+  let source: SeasonStandings['source'] = 'sleeper'
+  if (weeksPlayed.length === 0 && seasonIsOver && rostersHaveRecords(rosters)) {
+    teams = teamsFromRosterSettings(rosters, users)
+    weeksPlayed = []
+    source = 'sleeper-summary'
+  }
   const season: SeasonStandings = {
     leagueId: league.league_id,
     season: String(league.season),
@@ -133,6 +152,7 @@ export async function loadSeason(
     placements,
     teams,
     complete: seasonIsOver,
+    source,
   }
   if (season.complete) cacheSet(league.league_id, season)
   return season
@@ -152,5 +172,15 @@ export async function loadHistory(
   )
   const current = leagues[0]
   if (!current) throw new Error(`No league found with ID "${leagueId}".`)
+  // Sleeper notes the previous season's champion on the following league;
+  // fill in seasons whose bracket gave nothing (history added without games).
+  leagues.forEach((league, i) => {
+    const previous = seasons[i + 1]
+    const winner = Number(league.metadata?.latest_league_winner_roster_id)
+    if (!previous || previous.champion !== null || !previous.complete || !winner) return
+    if (!previous.teams.some((t) => t.rosterId === winner)) return
+    previous.champion = winner
+    previous.placements = { ...previous.placements, [winner]: 1 }
+  })
   return { current, seasons: seasons.slice().sort((a, b) => Number(b.season) - Number(a.season)) }
 }

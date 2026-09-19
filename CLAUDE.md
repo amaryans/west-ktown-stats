@@ -73,7 +73,11 @@ data, members write their own suggestions/stat entries.
 
 - Lottery odds basis points sum to exactly 10000; team count 2–16; the draw is computed at "Start
   Lottery" with a recorded seed and the event screen is theater over a fixed result.
-- Standings are recomputed from weekly matchups (regular season only); completed seasons are cached.
+- Standings are recomputed from weekly matchups (regular season only); completed seasons are cached
+  (`wkt.history:v2:`). A completed Sleeper season with no matchups but roster records (history
+  added to Sleeper from another platform) falls back to those totals with `source:
+'sleeper-summary'`; the following league's `metadata.latest_league_winner_roster_id` supplies
+  the champion when the bracket is empty.
 - `stat_entries` are unique per (definition, season, week, subject); week 0 = season total.
 - One member per Sleeper team (`profiles_sleeper_user_idx`). `profiles.id` is the auth user id for
   real members and a random uuid for placeholders (`is_placeholder`); `merge_placeholder_member`
