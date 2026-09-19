@@ -1,0 +1,29 @@
+name: Sleeper diagnostic
+
+# Prints what Sleeper returns for every season in the league's chain (public
+# data), for working out why a season shows up wrong on the site. Run it by
+# hand from the Actions tab; the league id comes from Supabase unless given.
+
+on:
+  workflow_dispatch:
+    inputs:
+      league_id:
+        description: 'Sleeper league id (blank = the one in league settings)'
+        required: false
+        default: ''
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run sleeper-diagnostic
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SLEEPER_LEAGUE_ID: ${{ inputs.league_id }}
