@@ -88,7 +88,14 @@ export function parsePastedTeams(text: string): Omit<DraftTeam, 'key' | 'sleeper
 
 /** Commissioner: final standings for seasons before the league moved to Sleeper. */
 export default function LegacySeasonsSettings() {
-  const { legacySeasons, history, nameOf, upsertLegacySeason, deleteLegacySeason } = useLeague()
+  const {
+    legacySeasons,
+    legacyTableMissing,
+    history,
+    nameOf,
+    upsertLegacySeason,
+    deleteLegacySeason,
+  } = useLeague()
   const [editing, setEditing] = useState<LegacySeason | 'new' | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
 
@@ -111,6 +118,14 @@ export default function LegacySeasonsSettings() {
         against the median.
       </p>
       <HistoryStatus />
+      {legacyTableMissing && (
+        <div className="banner warn">
+          The database does not have the <code>legacy_seasons</code> table yet, so nothing can be
+          saved here. In Supabase, open the SQL Editor and run{' '}
+          <code>supabase/migrations/2026-09-19-legacy-seasons.sql</code> from the repository, then
+          reload this page.
+        </div>
+      )}
       {msg && <div className="banner small">{msg}</div>}
 
       <div className="card">
