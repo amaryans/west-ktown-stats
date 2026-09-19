@@ -136,21 +136,81 @@ async function main() {
     const res = await fetch(url).catch((e) => ({ status: e.message, text: async () => '' }))
     console.log(`  ${url}: ${res.status} ${(await res.text()).slice(0, 400)}`)
   }
-  // GraphQL, which the Sleeper apps use: does introspection name a history type?
-  try {
+  // GraphQL, which the Sleeper apps use. Its introspection is snake_case
+  // (query_type, of_type). List every query field, then the shape of any
+  // that looks like league history.
+  async function gql(query, variables = {}) {
     const res = await fetch('https://sleeper.com/graphql', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        query: '{ __schema { queryType { fields { name } } types { name } } }',
-      }),
+      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify({ query, variables }),
     })
     const text = await res.text()
-    const words = [
-      ...text.matchAll(/"name":"([^"]*(?:histor|legacy|past|season|trophy|champ|record)[^"]*)"/gi),
-    ].map((m) => m[1])
-    console.log(`  graphql introspection: ${res.status} matches=${[...new Set(words)].join(', ')}`)
-    console.log(`  graphql first 600 chars: ${text.slice(0, 600)}`)
+    try {
+      return { status: res.status, json: JSON.parse(text) }
+    } catch {
+      return { status: res.status, json: null, text: text.slice(0, 400) }
+    }
+  }
+  const typeRef = (t) => {
+    let cur = t
+    let out = ''
+    while (cur) {
+      if (cur.kind === 'LIST') out += '['
+      else if (cur.kind === 'NON_NULL') out += '!'
+      else out += cur.name ?? ''
+      cur = cur.of_type
+    }
+    return out
+  }
+  try {
+    const schema = await gql(
+      `{ __schema { query_type { name fields { name args { name type { name kind of_type { name kind of_type { name kind } } } } type { name kind of_type { name kind of_type { name kind } } } } } mutation_type { name } types { name kind } } }`,
+    )
+    console.log(`\n=== graphql schema: ${schema.status}`)
+    const q = schema.json?.data?.__schema
+    if (!q) {
+      console.log('  no schema:', JSON.stringify(schema.json ?? schema.text).slice(0, 600))
+    } else {
+      const fields = q.query_type?.fields ?? []
+      console.log(`  query type ${q.query_type?.name}: ${fields.length} fields`)
+      console.log('  fields:', fields.map((f) => f.name).join(', '))
+      const interesting = /histor|legacy|past|trophy|champ|record|season|standing|import|archive/i
+      const types = new Set()
+      for (const f of fields) {
+        if (!interesting.test(f.name)) continue
+        console.log(
+          `  ${f.name}(${f.args.map((a) => `${a.name}: ${typeRef(a.type)}`).join(', ')}) -> ${typeRef(f.type)}`,
+        )
+        let t = f.type
+        while (t?.of_type) t = t.of_type
+        if (t?.name) types.add(t.name)
+      }
+      for (const t of q.types ?? []) {
+        if (interesting.test(t.name) && !t.name.startsWith('__')) types.add(t.name)
+      }
+      for (const name of types) {
+        const detail = await gql(
+          `{ __type(name: ${JSON.stringify(name)}) { name kind fields { name type { name kind of_type { name kind of_type { name kind } } } } } }`,
+        )
+        const ty = detail.json?.data?.__type
+        console.log(
+          `  type ${name}: ${ty?.fields ? ty.fields.map((x) => `${x.name}: ${typeRef(x.type)}`).join(', ') : JSON.stringify(detail.json ?? detail.text).slice(0, 300)}`,
+        )
+      }
+    }
+    // Direct tries that need no schema knowledge.
+    for (const query of [
+      `{ league_history(league_id: "${first}") { season } }`,
+      `{ league_histories(league_id: "${first}") { season } }`,
+      `{ legacy_leagues(league_id: "${first}") { season } }`,
+      `{ league(league_id: "${first}") { league_id name } }`,
+    ]) {
+      const r = await gql(query)
+      console.log(
+        `  ${query.slice(0, 60)} -> ${r.status} ${JSON.stringify(r.json ?? r.text).slice(0, 300)}`,
+      )
+    }
   } catch (err) {
     console.log(`  graphql: ${err.message}`)
   }
