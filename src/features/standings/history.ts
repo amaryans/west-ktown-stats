@@ -25,6 +25,10 @@ export interface SeasonStandings {
   placements: Record<number, number>
   teams: SeasonTeam[]
   complete: boolean
+  /** 'manual' for a season typed in from before Sleeper (no weekly data); Sleeper otherwise. */
+  source?: 'sleeper' | 'manual'
+  /** For manual seasons: the platform the league was on that year. */
+  sourceName?: string | null
 }
 
 export interface LeagueHistory {

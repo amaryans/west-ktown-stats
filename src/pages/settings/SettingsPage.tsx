@@ -7,6 +7,7 @@ import LeagueSettingsForm from './LeagueSettings.tsx'
 import MembersSettings from './MembersSettings.tsx'
 import StatDefinitionsSettings from './StatDefinitionsSettings.tsx'
 import DataSettings from './DataSettings.tsx'
+import LegacySeasonsSettings from './LegacySeasonsSettings.tsx'
 
 export default function SettingsPage() {
   const { isCommissioner } = useLeague()
@@ -17,6 +18,7 @@ export default function SettingsPage() {
       ? [
           { to: '/settings/members', label: 'Members' },
           { to: '/settings/stats', label: 'Stat definitions' },
+          { to: '/settings/seasons', label: 'Past seasons' },
           { to: '/settings/data', label: 'Shared data' },
         ]
       : []),
@@ -33,6 +35,7 @@ export default function SettingsPage() {
         <Route path="league" element={<LeagueSettingsForm />} />
         {isCommissioner && <Route path="members" element={<MembersSettings />} />}
         {isCommissioner && <Route path="stats" element={<StatDefinitionsSettings />} />}
+        {isCommissioner && <Route path="seasons" element={<LegacySeasonsSettings />} />}
         {isCommissioner && <Route path="data" element={<DataSettings />} />}
         <Route path="*" element={<Navigate to="/settings" replace />} />
       </Routes>

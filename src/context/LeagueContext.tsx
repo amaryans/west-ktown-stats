@@ -13,6 +13,7 @@ import { supabase } from '../lib/supabase.ts'
 import type {
   DraftOrder,
   KeeperList,
+  LegacySeason,
   LeagueSettings,
   Profile,
   StatDefinition,
@@ -21,6 +22,7 @@ import type {
 } from '../lib/db.ts'
 import { loadSleeperLeague, type SleeperLeagueInfo } from '../lib/sleeper/league.ts'
 import { loadHistory, type LeagueHistory } from '../features/standings/history.ts'
+import { withLegacySeasons } from '../features/standings/legacy.ts'
 import { useAuth } from './AuthContext.tsx'
 
 interface DataState {
@@ -30,6 +32,7 @@ interface DataState {
   profiles: Profile[]
   draftOrders: DraftOrder[]
   keeperLists: KeeperList[]
+  legacySeasons: LegacySeason[]
   suggestions: StatSuggestion[]
   statDefinitions: StatDefinition[]
   statEntries: StatEntry[]
@@ -84,6 +87,11 @@ export interface LeagueValue extends DataState {
   ) => Promise<void>
   updateStatEntry: (id: string, fields: Partial<StatEntry>) => Promise<void>
   deleteStatEntry: (id: string) => Promise<void>
+  /** Commissioner: a season from before Sleeper, keyed by year. */
+  upsertLegacySeason: (
+    fields: Pick<LegacySeason, 'season' | 'source' | 'notes' | 'teams'>,
+  ) => Promise<void>
+  deleteLegacySeason: (id: string) => Promise<void>
 }
 
 const LeagueContext = createContext<LeagueValue | null>(null)
@@ -95,6 +103,7 @@ const EMPTY: DataState = {
   profiles: [],
   draftOrders: [],
   keeperLists: [],
+  legacySeasons: [],
   suggestions: [],
   statDefinitions: [],
   statEntries: [],
@@ -114,6 +123,7 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
       profiles,
       draftOrders,
       keeperLists,
+      legacySeasons,
       suggestions,
       statDefinitions,
       statEntries,
@@ -122,6 +132,7 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
       supabase.from('profiles').select('*').order('display_name'),
       supabase.from('draft_orders').select('*').order('season', { ascending: false }),
       supabase.from('keeper_lists').select('*').order('season', { ascending: false }),
+      supabase.from('legacy_seasons').select('*').order('season', { ascending: false }),
       supabase.from('stat_suggestions').select('*').order('created_at', { ascending: false }),
       supabase.from('stat_definitions').select('*').order('label'),
       supabase
@@ -136,6 +147,7 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
       profiles,
       draftOrders,
       keeperLists,
+      legacySeasons,
       suggestions,
       statDefinitions,
       statEntries,
@@ -151,6 +163,7 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
       profiles: (profiles.data ?? []) as Profile[],
       draftOrders: (draftOrders.data ?? []) as DraftOrder[],
       keeperLists: (keeperLists.data ?? []) as KeeperList[],
+      legacySeasons: (legacySeasons.data ?? []) as LegacySeason[],
       suggestions: (suggestions.data ?? []) as StatSuggestion[],
       statDefinitions: (statDefinitions.data ?? []) as StatDefinition[],
       statEntries: (statEntries.data ?? []) as StatEntry[],
@@ -233,6 +246,12 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
     }
   }, [sleeperLeagueId])
 
+  // Seasons typed in from before Sleeper join the loaded history.
+  const mergedHistory = useMemo(
+    () => (history.data ? withLegacySeasons(history.data, state.legacySeasons) : null),
+    [history.data, state.legacySeasons],
+  )
+
   const unlistedSleeperTeams = useMemo(() => {
     const held = new Set(state.profiles.map((p) => p.sleeper_user_id).filter(Boolean))
     return (sleeper.data?.teams ?? []).filter((t) => t.userId && !held.has(t.userId))
@@ -260,7 +279,7 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
     me,
     isCommissioner,
     sleeper,
-    history: { ...history, load: loadHistoryOnce, refresh: refreshHistory },
+    history: { ...history, data: mergedHistory, load: loadHistoryOnce, refresh: refreshHistory },
     reload,
     profileById,
     nameOf,
@@ -286,6 +305,13 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
           .from('keeper_lists')
           .upsert({ ...fields, updated_by: uid }, { onConflict: 'season' }),
       ),
+    upsertLegacySeason: (fields) =>
+      run(
+        supabase
+          .from('legacy_seasons')
+          .upsert({ ...fields, updated_by: uid }, { onConflict: 'season' }),
+      ),
+    deleteLegacySeason: (id) => run(supabase.from('legacy_seasons').delete().eq('id', id)),
     createSuggestion: (fields) =>
       run(supabase.from('stat_suggestions').insert({ ...fields, user_id: uid })),
     updateSuggestion: (id, fields) =>

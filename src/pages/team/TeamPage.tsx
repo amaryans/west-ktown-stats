@@ -520,7 +520,11 @@ function TeamHistory({ ownerId }: { ownerId: string }) {
                     <td className="nowrap">{s.season}</td>
                     <td>{s.teamName}</td>
                     <td className="num nowrap">{formatRecord(s.h2h)}</td>
-                    <td className="num nowrap">{formatRecord(s.median)}</td>
+                    <td className="num nowrap">
+                      {s.median.wins + s.median.losses + s.median.ties
+                        ? formatRecord(s.median)
+                        : '—'}
+                    </td>
                     <td className="num">{s.rank ? `${s.rank}/${s.teamCount}` : '—'}</td>
                     <td className="num">{fmtPts(s.pointsFor)}</td>
                     <td className="num">{fmtPts(s.pointsAgainst)}</td>

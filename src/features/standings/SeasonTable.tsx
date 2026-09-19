@@ -164,14 +164,22 @@ export default function SeasonSection({
   highlightOwnerId?: string | null
 }) {
   const [medianOn, setMedianOn] = useState(season.medianEnabled)
+  const manual = season.source === 'manual'
   const played = season.weeksPlayed.length
   const subtitleParts: string[] = []
-  if (played === 0) subtitleParts.push('No games played yet')
-  else subtitleParts.push(`Regular season · ${played} week${played === 1 ? '' : 's'}`)
-  if (season.status === 'in_season') subtitleParts.push('In progress')
-  subtitleParts.push(
-    season.medianEnabled ? 'League median was on in Sleeper' : 'League median was off in Sleeper',
-  )
+  if (manual) {
+    subtitleParts.push(
+      `Final standings${season.sourceName ? ` from ${season.sourceName}` : ''}, before Sleeper`,
+    )
+    subtitleParts.push('No weekly data, so no games vs. median')
+  } else {
+    if (played === 0) subtitleParts.push('No games played yet')
+    else subtitleParts.push(`Regular season · ${played} week${played === 1 ? '' : 's'}`)
+    if (season.status === 'in_season') subtitleParts.push('In progress')
+    subtitleParts.push(
+      season.medianEnabled ? 'League median was on in Sleeper' : 'League median was off in Sleeper',
+    )
+  }
   const toggleId = `median-${season.leagueId}`
 
   return (
@@ -181,21 +189,27 @@ export default function SeasonSection({
           <h2 className="season__title">{season.season}</h2>
           <p className="season__subtitle">{subtitleParts.join(' · ')}</p>
         </div>
-        <label className="toggle" htmlFor={toggleId}>
-          <input
-            type="checkbox"
-            id={toggleId}
-            checked={medianOn}
-            onChange={(e) => setMedianOn(e.target.checked)}
-          />
-          <span className="toggle__track" aria-hidden="true" />
-          <span className="toggle__label">Games vs. median</span>
-        </label>
+        {!manual && (
+          <label className="toggle" htmlFor={toggleId}>
+            <input
+              type="checkbox"
+              id={toggleId}
+              checked={medianOn}
+              onChange={(e) => setMedianOn(e.target.checked)}
+            />
+            <span className="toggle__track" aria-hidden="true" />
+            <span className="toggle__label">Games vs. median</span>
+          </label>
+        )}
       </header>
-      {played === 0 ? (
+      {played === 0 && !manual ? (
         <p className="empty">Standings will appear once the first week is scored.</p>
       ) : (
-        <StandingsTable season={season} medianOn={medianOn} highlightOwnerId={highlightOwnerId} />
+        <StandingsTable
+          season={season}
+          medianOn={medianOn && !manual}
+          highlightOwnerId={highlightOwnerId}
+        />
       )}
     </section>
   )
