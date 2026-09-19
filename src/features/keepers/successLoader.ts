@@ -135,11 +135,13 @@ export function loadKeeperSuccessRaw(
   onProgress: (message: string) => void = () => undefined,
   client: SleeperClient = sleeper,
 ): Promise<SeasonRaw[]> {
+  // Seasons typed in from before Sleeper have no draft or matchups to read.
+  const seasons = history.seasons.filter((s) => s.source !== 'manual')
   let done = 0
-  return mapLimit(history.seasons, CONCURRENCY, async (season) => {
+  return mapLimit(seasons, CONCURRENCY, async (season) => {
     const raw = await loadSeasonRaw(client, season)
     done += 1
-    onProgress(`Read ${done} of ${history.seasons.length} drafts and seasons…`)
+    onProgress(`Read ${done} of ${seasons.length} drafts and seasons…`)
     return raw
   })
 }

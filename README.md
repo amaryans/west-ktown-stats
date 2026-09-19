@@ -17,7 +17,7 @@ team-claiming structure the whole site now uses) — into one React app.
 | **Stats**     | **All-time** standings across every season; **Manual stats** typed or pasted in from NFL.com; **Advanced → Keeper success**, which grades every keeper in league history and ranks who keeps best; **Suggest a stat**, which files a GitHub issue automatically.                                |
 | **Standings** | Every season's regular-season standings from Sleeper, with the games-vs-median toggle.                                                                                                                                                                                                          |
 | **Team**      | The signed-in manager's roster for any season and their history in the league (any team can be browsed), with a **Keeper value** view that prices each keeper against ADP.                                                                                                                      |
-| **Settings**  | Profile and Sleeper team claim; commissioner: league settings, members, stat definitions, published data.                                                                                                                                                                                       |
+| **Settings**  | Profile and Sleeper team claim; commissioner: league settings, members, stat definitions, past (pre-Sleeper) seasons, published data.                                                                                                                                                           |
 
 The site is mobile-first: on phones the tabs become a bottom bar and tables collapse into cards.
 
@@ -55,8 +55,9 @@ parlay database keeps working.
 If you already run the parlay tracker on a Supabase project, run only section 4 of the schema
 (the "Consolidated site tables") plus the `profiles_sleeper_user_idx` index and
 `claimed_sleeper_users` function from section 2, then
-`supabase/migrations/2026-09-18-placeholder-members.sql` — the login and parlay tables are the
-same. The same migration upgrades a database created from an earlier copy of `schema.sql`.
+`supabase/migrations/2026-09-18-placeholder-members.sql` and
+`supabase/migrations/2026-09-19-legacy-seasons.sql` — the login and parlay tables are the same.
+The same migrations upgrade a database created from an earlier copy of `schema.sql`.
 
 ### 2. Deploy to GitHub Pages
 
@@ -153,6 +154,13 @@ docs/keeper-rules.md             the league's keeper rules, codified
 ```
 
 ## Notes on the data
+
+- Seasons from before the league was on Sleeper are typed in by the commissioner under Settings →
+  Past seasons (team, manager, record, points, playoff finish; rows can be pasted from a
+  spreadsheet). They appear in the standings history, the all-time table and each manager's team
+  history marked as pre-Sleeper. They have no weekly scores, so no games-vs-median split and no
+  best week, and the keeper stats skip them. A past manager is linked to their Sleeper account
+  when they have one, so careers run across both eras.
 
 - Keeper success (Stats → Advanced) reads each season's draft from Sleeper (keeper flags plus the
   lists saved under Preseason → Keepers) and the weekly matchups' per-player points, so every

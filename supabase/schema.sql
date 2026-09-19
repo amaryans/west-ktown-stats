@@ -115,6 +115,7 @@ begin
   update public.stat_definitions set created_by = target_id where created_by = placeholder_id;
   update public.draft_orders set created_by = target_id where created_by = placeholder_id;
   update public.keeper_lists set updated_by = target_id where updated_by = placeholder_id;
+  update public.legacy_seasons set updated_by = target_id where updated_by = placeholder_id;
   delete from public.profiles where id = placeholder_id and is_placeholder;
   perform set_config('app.merging', 'off', true);
 end $$;
@@ -447,6 +448,25 @@ create table public.keeper_lists (
 create trigger keeper_lists_touch before update on public.keeper_lists
   for each row execute procedure public.touch_updated_at();
 
+-- Seasons from before the league was on Sleeper: final standings typed in by
+-- the commissioner (Settings → Past seasons). No weekly data, so no median.
+create table public.legacy_seasons (
+  id          uuid primary key default gen_random_uuid(),
+  season      int not null unique check (season between 1990 and 2100),
+  -- Where the league lived that year (ESPN, Yahoo, NFL.com…), shown as the source.
+  source      text,
+  notes       text,
+  -- Array of { teamName, ownerName, sleeperUserId, wins, losses, ties,
+  -- pointsFor, pointsAgainst, playoffFinish } in no particular order; the
+  -- site ranks them by record, then points for.
+  teams       jsonb not null default '[]'::jsonb check (jsonb_typeof(teams) = 'array'),
+  updated_by  uuid references public.profiles (id) on delete set null,
+  updated_at  timestamptz not null default now()
+);
+
+create trigger legacy_seasons_touch before update on public.legacy_seasons
+  for each row execute procedure public.touch_updated_at();
+
 -- Stats members would like to see. A GitHub Actions workflow turns "new"
 -- rows into GitHub issues and records the issue number here.
 create table public.stat_suggestions (
@@ -536,6 +556,7 @@ alter table public.weeks            enable row level security;
 alter table public.legs             enable row level security;
 alter table public.draft_orders     enable row level security;
 alter table public.keeper_lists     enable row level security;
+alter table public.legacy_seasons   enable row level security;
 alter table public.stat_suggestions enable row level security;
 alter table public.stat_definitions enable row level security;
 alter table public.stat_entries     enable row level security;
@@ -566,6 +587,9 @@ create policy "commissioner writes draft orders" on public.draft_orders for all 
 
 create policy "members read keeper lists"      on public.keeper_lists for select to authenticated using (true);
 create policy "commissioner writes keeper lists" on public.keeper_lists for all to authenticated using (public.is_commissioner()) with check (public.is_commissioner());
+
+create policy "members read legacy seasons"      on public.legacy_seasons for select to authenticated using (true);
+create policy "commissioner writes legacy seasons" on public.legacy_seasons for all to authenticated using (public.is_commissioner()) with check (public.is_commissioner());
 
 create policy "members read suggestions"   on public.stat_suggestions for select to authenticated using (true);
 create policy "members suggest stats"      on public.stat_suggestions for insert to authenticated with check (user_id = auth.uid());

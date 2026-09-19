@@ -33,7 +33,9 @@ npm run build        # tsc + vite build -> dist/
   lottery and keepers features import it rather than carrying their own.
 - **Features** (`src/features/*`) are self-contained; pages compose them:
   - `standings/` — `standings.ts` (pure math), `history.ts` (loader + localStorage cache),
-    `alltime.ts` (career aggregates), `SeasonTable.tsx`.
+    `alltime.ts` (career aggregates), `legacy.ts` (pre-Sleeper seasons from `legacy_seasons`,
+    shaped like Sleeper seasons with `source: 'manual'`, merged into `history.data` by
+    `LeagueContext`; no weekly data, so no median), `SeasonTable.tsx`.
   - `lottery/` — `engine/` (pure, seedable), `data/` (mapping, seeding), `state/store.ts`
     (zustand, persisted as `ffl.v1`), `screens/`, `LotteryApp.tsx` (phase switch + step nav).
     Tailwind classes are used only here; the rest of the site uses the CSS in `src/index.css`.
@@ -62,7 +64,8 @@ npm run build        # tsc + vite build -> dist/
 `supabase/schema.sql` is the source of truth. Sections 1–2 are the login structure shared with the
 parlay tracker (`league_settings`, `profiles`, invite code trigger, commissioner role); section 3
 holds the parlay tracker's tables unchanged; section 4 is this site's (`draft_orders`,
-`keeper_lists`, `stat_suggestions`, `stat_definitions`, `stat_entries`). Row types live in
+`keeper_lists`, `legacy_seasons`, `stat_suggestions`, `stat_definitions`, `stat_entries`). Row
+types live in
 `src/lib/db.ts`. Every table is RLS-protected: members read everything, commissioners write shared
 data, members write their own suggestions/stat entries.
 

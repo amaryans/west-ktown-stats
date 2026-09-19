@@ -64,6 +64,32 @@ export interface KeeperList {
   updated_at: string
 }
 
+/** One team's final line in a season from before the league was on Sleeper. */
+export interface LegacyTeam {
+  teamName: string
+  ownerName: string
+  /** The manager's Sleeper user id when they are (or were) in the Sleeper league; else null. */
+  sleeperUserId: string | null
+  wins: number
+  losses: number
+  ties: number
+  pointsFor: number
+  pointsAgainst: number
+  /** Playoff placement, 1 = champion; null if the team missed the playoffs or it is unknown. */
+  playoffFinish: number | null
+}
+
+export interface LegacySeason {
+  id: string
+  season: number
+  /** Where the league lived that year (ESPN, Yahoo…). */
+  source: string | null
+  notes: string | null
+  teams: LegacyTeam[]
+  updated_by: string | null
+  updated_at: string
+}
+
 export type SuggestionStatus = 'new' | 'filed' | 'done' | 'declined'
 
 export interface StatSuggestion {

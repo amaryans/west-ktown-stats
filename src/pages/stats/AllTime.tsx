@@ -80,7 +80,11 @@ export default function AllTime() {
                     <td className="num">{c.seasonsPlayed}</td>
                     <td className="num nowrap">{formatRecord(c.h2h)}</td>
                     <td className="num">{(c.winPct * 100).toFixed(1)}</td>
-                    <td className="num nowrap">{formatRecord(c.median)}</td>
+                    <td className="num nowrap">
+                      {c.median.wins + c.median.losses + c.median.ties
+                        ? formatRecord(c.median)
+                        : '—'}
+                    </td>
                     <td className="num">{fmtPts(c.pointsFor)}</td>
                     <td className="num">{fmtPts(c.pointsAgainst)}</td>
                     <td className="num">{c.averageRank ?? '—'}</td>
