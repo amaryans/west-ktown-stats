@@ -30,7 +30,10 @@ npm run build        # tsc + vite build -> dist/
   profiles, published data, stat tables + every mutation; reloads after each write). The Sleeper
   current season loads eagerly; the full multi-season history loads lazily via `history.load()`.
 - **Sleeper:** one client in `src/lib/sleeper/client.ts` (injectable `fetchFn` for tests). The
-  lottery and keepers features import it rather than carrying their own.
+  lottery and keepers features import it rather than carrying their own. `lib/sleeper/manualHistory.ts`
+  reads League Settings → League History via Sleeper's GraphQL (`get_league_manual_history`, needs
+  the commissioner's token, CORS open) and maps it into `legacy_seasons` rows; the mapper is
+  name-tolerant because Sleeper's row shape is undocumented.
 - **Features** (`src/features/*`) are self-contained; pages compose them:
   - `standings/` — `standings.ts` (pure math), `history.ts` (loader + localStorage cache),
     `alltime.ts` (career aggregates), `legacy.ts` (pre-Sleeper seasons from `legacy_seasons`,

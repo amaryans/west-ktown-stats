@@ -7,6 +7,7 @@ import { fmtPts } from '../../features/standings/SeasonTable.tsx'
 import { formatRecord } from '../../features/standings/standings.ts'
 import type { LegacySeason, LegacyTeam } from '../../lib/db.ts'
 import { ordinal } from '../team/TeamPage.tsx'
+import SleeperHistoryImport from './SleeperHistoryImport.tsx'
 
 /** A row being edited: numbers stay as text until saved so half-typed values do not snap. */
 interface DraftTeam {
@@ -110,12 +111,11 @@ export default function LegacySeasonsSettings() {
   return (
     <div className="stack">
       <p className="muted small" style={{ margin: 0 }}>
-        Final standings from the years before the league was on Sleeper. Seasons already added to
-        Sleeper&apos;s league history are read from there automatically; use this only for years
-        Sleeper does not have. They join the <Link to="/history">standings history</Link>, the{' '}
-        <Link to="/stats">all-time table</Link> and each manager&apos;s team history. Those years
-        have no weekly scores, so they carry a record, points and playoff finish but no games
-        against the median.
+        Final standings from the years before the league was on Sleeper: imported from the Sleeper
+        app&apos;s League History below, or typed in. They join the{' '}
+        <Link to="/history">standings history</Link>, the <Link to="/stats">all-time table</Link>{' '}
+        and each manager&apos;s team history. Those years have no weekly scores, so they carry a
+        record, points and playoff finish but no games against the median.
       </p>
       <HistoryStatus />
       {legacyTableMissing && (
@@ -211,6 +211,14 @@ export default function LegacySeasonsSettings() {
           </div>
         )}
       </div>
+
+      {editing === null && !legacyTableMissing && (
+        <SleeperHistoryImport
+          sleeperYears={sleeperYears}
+          savedYears={legacySeasons.map((l) => l.season)}
+          onSaved={setMsg}
+        />
+      )}
 
       {editing !== null && (
         <SeasonEditor
