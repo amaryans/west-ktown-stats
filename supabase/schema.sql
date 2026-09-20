@@ -275,6 +275,8 @@ create table public.weeks (
   loser_id       uuid references public.profiles (id) on delete set null,
   low_score      numeric(6,2),
   stake          numeric(10,2) not null default 10,
+  -- After this time only a leg's owner (or a commissioner) can change it;
+  -- anyone can still mark results.
   lock_at        timestamptz,
   parlay_result  text not null default 'pending'
                  check (parlay_result in ('pending', 'won', 'lost', 'push', 'void')),
@@ -345,6 +347,11 @@ create trigger weeks_rules
   before update on public.weeks
   for each row execute procedure public.enforce_week_rules();
 
+-- Leg rules: the placer only gets a leg when loser_adds_leg is on; a leg
+-- belongs to its member, so only they (or a commissioner) can add, rewrite or
+-- remove it, while anyone can fill in odds and mark the result; once a week
+-- is locked only the owner (or a commissioner) can still change a leg, and
+-- other members can no longer fill in its odds.
 create or replace function public.enforce_leg_rules()
 returns trigger language plpgsql as $$
 declare
@@ -384,22 +391,8 @@ begin
        or new.week_id is distinct from old.week_id then
       raise exception 'Only the member who owns this leg (or a commissioner) can change the pick';
     end if;
-  end if;
-  if tg_op = 'INSERT' and locked then
-    raise exception 'This week is locked; no new legs can be added';
-  end if;
-  if tg_op = 'DELETE' and locked then
-    raise exception 'This week is locked; legs cannot be removed';
-  end if;
-  if tg_op = 'UPDATE' and locked then
-    if new.pick is distinct from old.pick
-       or new.odds is distinct from old.odds
-       or new.game is distinct from old.game
-       or new.game_id is distinct from old.game_id
-       or new.market is distinct from old.market
-       or new.user_id is distinct from old.user_id
-       or new.week_id is distinct from old.week_id then
-      raise exception 'This week is locked; only the result can be changed';
+    if locked and new.odds is distinct from old.odds then
+      raise exception 'This week is locked; only the owner of this leg can change its odds now';
     end if;
   end if;
   if tg_op = 'DELETE' then

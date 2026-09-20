@@ -5,6 +5,7 @@ import type { Leg, LegMarket, OddsRef, Week } from '../../../lib/db.ts'
 import { useParlay } from '../ParlayContext.tsx'
 import type { LegPrefill } from '../lib/board.ts'
 import { parseAmerican } from '../lib/odds.ts'
+import { formatDateTime, isLocked } from '../lib/week.ts'
 import { MemberSelect } from './Badges.tsx'
 
 const MARKETS: [LegMarket, string][] = [
@@ -34,7 +35,7 @@ export default function LegForm({
   allowMemberChoice?: boolean
   onDone?: () => void
 }) {
-  const { me, profiles, settings, isCommissioner } = useLeague()
+  const { me, profiles, settings, isCommissioner, nameOf } = useLeague()
   const { legsForWeek, upsertLeg, updateLeg } = useParlay()
   const existingLegs = legsForWeek(week.id)
   const uid = useId()
@@ -118,6 +119,13 @@ export default function LegForm({
             exclude={excluded}
             disabled={Boolean(leg)}
           />
+        </div>
+      )}
+      {isLocked(week) && (
+        <div className="banner warn small">
+          Picks locked {formatDateTime(week.lock_at)}. If{' '}
+          {week.loser_id ? nameOf(week.loser_id) : 'whoever is placing the parlay'} has already
+          placed it, check with them before changing this leg.
         </div>
       )}
       <div className="form-grid">

@@ -18,7 +18,8 @@ const MARKET_LABEL: Record<Leg['market'], string> = {
 /**
  * Every eligible member gets a row, so it is obvious who still owes a pick.
  * Anyone can fill in odds and mark results; only the owner (or a
- * commissioner) can write, rewrite or remove a pick.
+ * commissioner) can write, rewrite or remove a pick. After the lock time the
+ * owner keeps control of their own leg; everyone else is down to results.
  */
 export default function LegTable({ week, editable = true }: { week: Week; editable?: boolean }) {
   const { me, profiles, settings, isCommissioner } = useLeague()
@@ -32,6 +33,7 @@ export default function LegTable({ week, editable = true }: { week: Week; editab
   const locked = isLocked(week)
   const legByUser = new Map(legs.map((l) => [l.user_id, l]))
   const canManage = (userId: string) => isCommissioner || userId === me?.id
+  const frozen = (userId: string) => locked && !canManage(userId)
 
   const rows = profiles
     .filter((p) => settings?.loser_adds_leg || p.id !== week.loser_id)
@@ -129,7 +131,7 @@ export default function LegTable({ week, editable = true }: { week: Week; editab
                   )}
                 </td>
                 <td className="num odds-cell">
-                  {leg && editable && !locked ? (
+                  {leg && editable && !frozen(leg.user_id) ? (
                     <span
                       className="row"
                       style={{ justifyContent: 'flex-end', gap: '.25rem', flexWrap: 'nowrap' }}
@@ -181,7 +183,7 @@ export default function LegTable({ week, editable = true }: { week: Week; editab
                 </td>
                 {editable && (
                   <td className="nowrap right actions">
-                    {leg && !locked && canManage(leg.user_id) && (
+                    {leg && canManage(leg.user_id) && (
                       <>
                         <button
                           type="button"
@@ -203,7 +205,7 @@ export default function LegTable({ week, editable = true }: { week: Week; editab
                         </button>
                       </>
                     )}
-                    {!leg && !locked && canManage(profile.id) && (
+                    {!leg && canManage(profile.id) && (
                       <button
                         type="button"
                         className="small primary"
@@ -212,7 +214,7 @@ export default function LegTable({ week, editable = true }: { week: Week; editab
                         {profile.id === me?.id ? 'Add my leg' : 'Enter for them'}
                       </button>
                     )}
-                    {locked && <span className="badge locked">locked</span>}
+                    {frozen(profile.id) && <span className="badge locked">locked</span>}
                   </td>
                 )}
               </tr>

@@ -196,7 +196,7 @@ export default function ThisWeek() {
           <ParlaySummary legs={legs} stake={week.stake} expectedLegs={eligible.length} />
         </div>
 
-        {!locked && iPick && !myLeg && (
+        {iPick && !myLeg && (
           <div className="banner mt">
             You haven&apos;t added your leg yet. Use <strong>Add my leg</strong> below or grab a
             line from the{' '}

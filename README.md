@@ -27,8 +27,9 @@ commissioners can promote others. A commissioner can also list Sleeper teams who
 not signed up yet as placeholder members (Settings → Members, or the prompt on the Parlay tab),
 so every week's parlay shows the whole league; a placeholder merges into the real account when
 that person signs up with the same team. The parlay tracker's tables and house rules (one leg per
-member per week, lock times, who may settle what) are carried over unchanged, so an existing
-parlay database keeps working.
+member per week, lock times, who may settle what) are carried over, so an existing parlay
+database keeps working. After a week's lock time only a leg's owner (or a commissioner) can still
+change it; other members can no longer fill in its odds.
 
 ## Stack
 
@@ -55,8 +56,9 @@ parlay database keeps working.
 If you already run the parlay tracker on a Supabase project, run only section 4 of the schema
 (the "Consolidated site tables") plus the `profiles_sleeper_user_idx` index and
 `claimed_sleeper_users` function from section 2, then
-`supabase/migrations/2026-09-18-placeholder-members.sql` and
-`supabase/migrations/2026-09-19-legacy-seasons.sql` — the login and parlay tables are the same.
+`supabase/migrations/2026-09-18-placeholder-members.sql`,
+`supabase/migrations/2026-09-19-legacy-seasons.sql` and
+`supabase/migrations/2026-09-20-owners-edit-after-lock.sql` — the login and parlay tables are the same.
 The same migrations upgrade a database created from an earlier copy of `schema.sql`.
 
 ### 2. Deploy to GitHub Pages
