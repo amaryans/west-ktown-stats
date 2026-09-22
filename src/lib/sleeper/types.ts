@@ -15,9 +15,15 @@ export interface SleeperLeague {
   metadata?: Record<string, string | null | undefined> | null
   settings?: {
     playoff_week_start?: number
+    playoff_teams?: number
     league_average_match?: number
+    divisions?: number
     [key: string]: number | undefined
   } | null
+  /** Stat key → points per unit, e.g. { rec: 0.5, pass_td: 4 }. */
+  scoring_settings?: Record<string, number> | null
+  /** Starting slots in order, then BN / IR / TAXI, e.g. ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'K', 'DEF', 'BN', …]. */
+  roster_positions?: string[] | null
 }
 
 export interface SleeperRosterSettings {
@@ -119,6 +125,20 @@ export interface SleeperState {
   league_season: string
   season_type: 'pre' | 'regular' | 'post' | 'off' | (string & {})
   week: number
+}
+
+/**
+ * One player's projected stat line for a week. Sleeper's projections endpoint
+ * is undocumented; only `player_id` and the stat keys are relied on.
+ */
+export interface SleeperProjection {
+  player_id: string
+  stats: Record<string, number | null | undefined>
+  week?: number | null
+  season?: string | null
+  team?: string | null
+  /** Null when the player's team has no game that week. */
+  opponent?: string | null
 }
 
 export interface SleeperPlayer {

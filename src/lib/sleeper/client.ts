@@ -10,6 +10,7 @@ import type {
   SleeperLeague,
   SleeperMatchup,
   SleeperPlayer,
+  SleeperProjection,
   SleeperRoster,
   SleeperState,
   SleeperTransaction,
@@ -55,6 +56,12 @@ export interface SleeperClient {
   getState(): Promise<SleeperState>
   /** ~5 MB. Call sparingly and cache; see lib/players.ts. */
   getPlayers(): Promise<Record<string, SleeperPlayer>>
+  /**
+   * Weekly projections for every player (undocumented endpoint, the one the
+   * Sleeper app itself reads). Normalised to one entry per player id whatever
+   * shape Sleeper answers with.
+   */
+  getProjections(season: string, week: number): Promise<SleeperProjection[]>
 }
 
 export function createSleeperClient(options: SleeperClientOptions = {}): SleeperClient {
@@ -90,7 +97,32 @@ export function createSleeperClient(options: SleeperClientOptions = {}): Sleeper
     return body
   }
 
+  async function getProjections(season: string, week: number): Promise<SleeperProjection[]> {
+    const yr = encodeURIComponent(season)
+    // The versioned path answers with a map keyed by player id; the app's own
+    // path answers with an array of { player_id, stats } rows. Try both.
+    try {
+      const body = await get<unknown>(`/projections/nfl/regular/${yr}/${week}`)
+      const rows = normaliseProjections(body)
+      if (rows.length > 0) return rows
+    } catch (error) {
+      if (!(error instanceof SleeperApiError)) throw error
+    }
+    const positions = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'].map((p) => `position[]=${p}`).join('&')
+    const alt = `${baseUrl.replace(/\/v1$/, '')}/projections/nfl/${yr}/${week}?season_type=regular&${positions}&order_by=pts_ppr`
+    const response = await fetchFn(alt, { headers: { Accept: 'application/json' } })
+    if (!response.ok) {
+      throw new SleeperApiError(
+        `Sleeper returned HTTP ${response.status} for projections week ${week}`,
+        response.status,
+        alt,
+      )
+    }
+    return normaliseProjections((await response.json()) as unknown)
+  }
+
   return {
+    getProjections,
     getLeague: (leagueId) => get(`/league/${encodeURIComponent(leagueId)}`),
     getRosters: (leagueId) => get(`/league/${encodeURIComponent(leagueId)}/rosters`),
     getUsers: (leagueId) => get(`/league/${encodeURIComponent(leagueId)}/users`),
@@ -107,6 +139,41 @@ export function createSleeperClient(options: SleeperClientOptions = {}): Sleeper
     getState: () => get('/state/nfl'),
     getPlayers: () => get('/players/nfl'),
   }
+}
+
+/**
+ * Accepts either projections shape — `{ [player_id]: stats }` or
+ * `[{ player_id, stats }]` — and returns one row per player.
+ */
+export function normaliseProjections(body: unknown): SleeperProjection[] {
+  if (Array.isArray(body)) {
+    return body.flatMap((row: unknown) => {
+      if (!row || typeof row !== 'object') return []
+      const r = row as Record<string, unknown>
+      const id = r.player_id
+      const stats = r.stats
+      if ((typeof id !== 'string' && typeof id !== 'number') || !stats || typeof stats !== 'object')
+        return []
+      return [
+        {
+          player_id: String(id),
+          stats: stats as SleeperProjection['stats'],
+          week: typeof r.week === 'number' ? r.week : null,
+          season: typeof r.season === 'string' ? r.season : null,
+          team: typeof r.team === 'string' ? r.team : null,
+          opponent: typeof r.opponent === 'string' ? r.opponent : null,
+        },
+      ]
+    })
+  }
+  if (body && typeof body === 'object') {
+    return Object.entries(body as Record<string, unknown>).flatMap(([id, stats]) =>
+      stats && typeof stats === 'object'
+        ? [{ player_id: id, stats: stats as SleeperProjection['stats'] }]
+        : [],
+    )
+  }
+  return []
 }
 
 /** The app-wide client. Tests build their own with a fake fetchFn. */

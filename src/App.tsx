@@ -52,7 +52,7 @@ export default function App() {
             <Route index element={<Navigate to="/history" replace />} />
             <Route path="/preseason/*" element={<PreseasonPage />} />
             <Route path="/stats/*" element={<StatsPage />} />
-            <Route path="/history" element={<StandingsPage />} />
+            <Route path="/history/*" element={<StandingsPage />} />
             <Route path="/team" element={<TeamPage />} />
             <Route path="/parlay/*" element={<ParlayPage />} />
             <Route path="/settings/*" element={<SettingsPage />} />
