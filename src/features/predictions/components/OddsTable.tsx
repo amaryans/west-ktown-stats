@@ -121,19 +121,12 @@ export default function OddsTable({
             {
               key: 'bye',
               label: 'Bye',
-              title: 'First-round bye odds',
+              title: 'Bye odds',
               get: (r: Row) => r.bye,
               className: 'col-num',
             },
           ]
         : []),
-      {
-        key: 'top',
-        label: '1st seed',
-        title: 'Top seed odds',
-        get: (r) => r.topSeed,
-        className: 'col-num',
-      },
       {
         key: 'seed',
         label: 'Avg seed',
@@ -159,7 +152,7 @@ export default function OddsTable({
       {
         key: 'sos',
         label: 'Opp. proj.',
-        title: 'Remaining schedule: average opponent projection',
+        title: 'Opponent projection',
         get: (r) => r.strength?.opponentAverage ?? null,
         className: 'col-num',
       },
@@ -180,7 +173,19 @@ export default function OddsTable({
       <div className="standings-sort">
         <SortSelect columns={columns} sort={sort} onChange={setSort} />
       </div>
-      <div className="table-wrap">
+      <ol className="odds-cards" aria-label="Playoff odds">
+        {sorted.map((r) => (
+          <OddsCard
+            key={r.rosterId}
+            row={r}
+            seeds={seeds}
+            showBye={result.byes > 0}
+            showTitle={playoffsSimulated}
+            isMe={Boolean(highlightOwnerId) && r.ownerId === highlightOwnerId}
+          />
+        ))}
+      </ol>
+      <div className="table-wrap odds-table-wrap">
         <table className="standings odds-table" aria-label="Playoff odds">
           <thead>
             <tr>
@@ -245,13 +250,6 @@ export default function OddsTable({
                       {fmtPct(r.bye)}
                     </td>
                   )}
-                  <td
-                    className="col-num"
-                    data-label="1st seed"
-                    style={{ background: pctFill(r.topSeed) }}
-                  >
-                    {fmtPct(r.topSeed)}
-                  </td>
                   <td className="col-num" data-label="Avg seed">
                     {(Math.round(r.averageSeed * 10) / 10).toFixed(1)}
                   </td>
@@ -328,9 +326,123 @@ function StatusBadge({ status }: { status: ClinchStatus | undefined }) {
       className="status-numbers"
       title={`Magic number ${magic ?? '—'}: wins (or losses by the team it must beat out) that clinch a spot. Elimination number ${elim ?? '—'}: losses (or wins by the team holding the last spot) that end the season.`}
     >
-      <span className="muted small">M</span> {magic ?? '—'} <span className="muted small">E</span>{' '}
-      {elim ?? '—'}
+      <span className="muted small">Magic</span> {magic ?? '—'}
+      <span className="muted small"> · Elim</span> {elim ?? '—'}
     </span>
+  )
+}
+
+/** Phone layout: one card per team, grouped into what is known now, what is projected, and seeds. */
+function OddsCard({
+  row: r,
+  seeds,
+  showBye,
+  showTitle,
+  isMe,
+}: {
+  row: Row
+  seeds: number[]
+  showBye: boolean
+  showTitle: boolean
+  isMe: boolean
+}) {
+  const strength = r.strength
+  return (
+    <li className={'odds-card' + (isMe ? ' is-me' : '')}>
+      <div className="odds-card__head">
+        <span className="odds-card__rank">{r.rank}</span>
+        <Avatar src={r.avatarSrc} name={r.teamName} />
+        <div className="team__names">
+          <div className="team__name">{r.teamName}</div>
+          <div className="team__owner">{r.ownerName}</div>
+        </div>
+      </div>
+      <div className="odds-block">
+        <div className="odds-block__title">Now</div>
+        <div className="odds-stats">
+          <Stat label="Record" value={formatRecord(r.record)} />
+          <Stat label="Points for" value={fmtPts(r.pointsFor)} />
+          <div className="odds-stat odds-stat--wide">
+            <span className="odds-stat__label">Status</span>
+            <span className="odds-stat__value">
+              <StatusBadge status={r.clinch} />
+            </span>
+          </div>
+        </div>
+      </div>
+      <div className="odds-block">
+        <div className="odds-block__title">Projection</div>
+        <div className="odds-stats odds-stats--odds">
+          <Stat label="Playoffs" value={fmtPct(r.playoff)} fill={r.playoff} strong />
+          {showBye && <Stat label="Bye" value={fmtPct(r.bye)} fill={r.bye} />}
+          {showTitle && <Stat label="Title" value={fmtPct(r.champion)} fill={r.champion} strong />}
+          {showTitle && <Stat label="Final" value={fmtPct(r.final)} fill={r.final} />}
+        </div>
+        <div className="odds-stats">
+          <Stat
+            label="Record"
+            value={fmtRecord(r.projectedWins, r.projectedLosses, r.projectedTies)}
+          />
+          <Stat label="Points for" value={fmtPts(r.projectedPointsFor)} />
+          <Stat
+            label="Opp. proj."
+            value={strength?.opponentAverage != null ? fmt1(strength.opponentAverage) : '—'}
+            hint={
+              strength?.opponentAverage != null
+                ? `${ordinal(strength.rank)} hardest · ${strength.games} left`
+                : undefined
+            }
+          />
+        </div>
+      </div>
+      <div className="odds-block">
+        <div className="odds-block__title">
+          Seed{' '}
+          <span className="muted">· avg {(Math.round(r.averageSeed * 10) / 10).toFixed(1)}</span>
+        </div>
+        <ol className="odds-seeds">
+          {seeds.map((seed) => {
+            const p = r.seedDistribution[seed - 1] ?? 0
+            const top = Math.max(...seeds.map((s) => r.seedDistribution[s - 1] ?? 0), 0.0001)
+            return (
+              <li key={seed} className="odds-seed">
+                <span className="odds-seed__bar" aria-hidden="true">
+                  <span style={{ height: `${Math.max(3, Math.round((p / top) * 100))}%` }} />
+                </span>
+                <span className="odds-seed__pct">{fmtPct(p)}</span>
+                <span className="odds-seed__label">{seed}</span>
+              </li>
+            )
+          })}
+        </ol>
+      </div>
+    </li>
+  )
+}
+
+function Stat({
+  label,
+  value,
+  fill,
+  strong = false,
+  hint,
+}: {
+  label: string
+  value: string
+  fill?: number
+  strong?: boolean
+  hint?: string
+}) {
+  return (
+    <div
+      className={'odds-stat' + (strong ? ' odds-stat--strong' : '')}
+      style={fill !== undefined ? { background: pctFill(fill) } : undefined}
+      title={hint}
+    >
+      <span className="odds-stat__label">{label}</span>
+      <span className="odds-stat__value">{value}</span>
+      {hint && <span className="odds-stat__hint">{hint}</span>}
+    </div>
   )
 }
 
