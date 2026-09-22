@@ -22,7 +22,7 @@ npm run build        # tsc + vite build -> dist/
 
 ## Architecture
 
-- **Routing:** `HashRouter`. Tabs: `/preseason/*`, `/stats/*`, `/history`, `/team`, `/parlay/*`,
+- **Routing:** `HashRouter`. Tabs: `/preseason/*`, `/stats/*`, `/history/*`, `/team`, `/parlay/*`,
   `/settings/*`.
   `App.tsx` shows Login/Signup when signed out, otherwise `Layout` (top bar + tab strip; a fixed
   bottom tab bar under 640px) around the pages.
@@ -30,7 +30,10 @@ npm run build        # tsc + vite build -> dist/
   profiles, published data, stat tables + every mutation; reloads after each write). The Sleeper
   current season loads eagerly; the full multi-season history loads lazily via `history.load()`.
 - **Sleeper:** one client in `src/lib/sleeper/client.ts` (injectable `fetchFn` for tests). The
-  lottery and keepers features import it rather than carrying their own. `lib/sleeper/manualHistory.ts`
+  lottery and keepers features import it rather than carrying their own. `getProjections` reads
+  Sleeper's undocumented weekly projections (`/v1/projections/nfl/regular/{season}/{week}`, a
+  map keyed by player id, falling back to the app's `/projections/nfl/{season}/{week}` array);
+  `normaliseProjections` accepts either shape. `lib/sleeper/manualHistory.ts`
   reads League Settings → League History via Sleeper's GraphQL (`get_league_manual_history`, needs
   the commissioner's token, CORS open) and maps it into `legacy_seasons` rows; the mapper is
   name-tolerant because Sleeper's row shape is undocumented.
@@ -39,6 +42,17 @@ npm run build        # tsc + vite build -> dist/
     `alltime.ts` (career aggregates), `legacy.ts` (pre-Sleeper seasons from `legacy_seasons`,
     shaped like Sleeper seasons with `source: 'manual'`, merged into `history.data` by
     `LeagueContext`; no weekly data, so no median), `SeasonTable.tsx`.
+  - `predictions/` — `engine/` (pure, seedable: `lineup.ts` exact optimal-lineup assignment
+    over `roster_positions`, `scoring.ts` projected stats × `scoring_settings`, `forecast.ts`
+    team mean/sd per week, `simulate.ts` Monte Carlo of the remaining schedule; seeding is
+    record then points for, plus the median game when on; `bracket.ts` standard / reseeded
+    bracket in Sleeper's `winners_bracket` shape, played after each simulated season for
+    title odds; `clinch.ts` exact clinch / elimination via max-flow over remaining games, plus
+    magic and elimination numbers; `schedule.ts` remaining strength of schedule), `loader.ts`
+    (current season: final weeks → standings, remaining + playoff weeks → schedule +
+    `getProjections`, cached in IndexedDB `projections:v1:` for 6h; Sleeper's bracket once
+    the playoffs start), `usePredictions.ts`, `PlayoffOddsApp.tsx` at `/history/odds`.
+    A week that has started counts as unplayed until Sleeper's NFL week moves on.
   - `lottery/` — `engine/` (pure, seedable), `data/` (mapping, seeding), `state/store.ts`
     (zustand, persisted as `ffl.v1`), `screens/`, `LotteryApp.tsx` (phase switch + step nav).
     Tailwind classes are used only here; the rest of the site uses the CSS in `src/index.css`.
@@ -57,10 +71,11 @@ npm run build        # tsc + vite build -> dist/
 
 ## Module boundaries (ESLint `no-restricted-imports`)
 
-- `features/lottery/engine/**` and `features/keepers/engine/**`: no React, no fetch, no
-  `Math.random` / `Date.now`.
-- `src/lib/**`, `features/standings/*.ts`, `features/lottery/data/**`, `features/keepers/api/**`:
-  framework-free (no React or UI imports). `features/parlay/lib/**` follows the same rule.
+- `features/lottery/engine/**`, `features/keepers/engine/**` and `features/predictions/engine/**`:
+  no React, no fetch, no `Math.random` / `Date.now`.
+- `src/lib/**`, `features/standings/*.ts`, `features/lottery/data/**`, `features/keepers/api/**`,
+  `features/predictions/{loader,format}.ts`: framework-free (no React or UI imports).
+  `features/parlay/lib/**` follows the same rule.
 
 ## Database
 

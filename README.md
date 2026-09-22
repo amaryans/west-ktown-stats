@@ -11,13 +11,13 @@ team-claiming structure the whole site now uses) — into one React app.
 
 ## What's in it
 
-| Tab           | What it does                                                                                                                                                                                                                                                                                    |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Preseason** | **Draft order** published for the season; the **Lottery** (NBA-style weighted draw, reveal-by-pick on draft night, publish the result league-wide); **Keepers** (eligibility boards per the league rules; who was kept is recorded and saved per season, for any year in the league's history). |
-| **Stats**     | **All-time** standings across every season; **Manual stats** typed or pasted in from NFL.com; **Advanced → Keeper success**, which grades every keeper in league history and ranks who keeps best; **Suggest a stat**, which files a GitHub issue automatically.                                |
-| **Standings** | Every season's regular-season standings from Sleeper, with the games-vs-median toggle.                                                                                                                                                                                                          |
-| **Team**      | The signed-in manager's roster for any season and their history in the league (any team can be browsed), with a **Keeper value** view that prices each keeper against ADP.                                                                                                                      |
-| **Settings**  | Profile and Sleeper team claim; commissioner: league settings, members, stat definitions, past (pre-Sleeper) seasons, published data.                                                                                                                                                           |
+| Tab           | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Preseason** | **Draft order** published for the season; the **Lottery** (NBA-style weighted draw, reveal-by-pick on draft night, publish the result league-wide); **Keepers** (eligibility boards per the league rules; who was kept is recorded and saved per season, for any year in the league's history).                                                                                                                                                                      |
+| **Stats**     | **All-time** standings across every season; **Manual stats** typed or pasted in from NFL.com; **Advanced → Keeper success**, which grades every keeper in league history and ranks who keeps best; **Suggest a stat**, which files a GitHub issue automatically.                                                                                                                                                                                                     |
+| **Standings** | **History**: every season's regular-season standings from Sleeper, with the games-vs-median toggle. **Playoff Odds**: this season simulated 10,000 times from Sleeper's weekly player projections (optimal lineups, bye weeks included), with each team's playoff, bye, seed and championship odds, exact clinch / elimination status with magic numbers, remaining strength of schedule, this week's win probabilities, and the best lineup for any remaining week. |
+| **Team**      | The signed-in manager's roster for any season and their history in the league (any team can be browsed), with a **Keeper value** view that prices each keeper against ADP.                                                                                                                                                                                                                                                                                           |
+| **Settings**  | Profile and Sleeper team claim; commissioner: league settings, members, stat definitions, past (pre-Sleeper) seasons, published data.                                                                                                                                                                                                                                                                                                                                |
 
 The site is mobile-first: on phones the tabs become a bottom bar and tables collapse into cards.
 
@@ -142,6 +142,7 @@ src/context/                     auth session; league data + mutations
 src/components/                  shell (Layout, SubTabs), shared widgets
 src/pages/                       one folder per tab
 src/features/standings/          standings math, history loader, all-time aggregates (pure)
+src/features/predictions/        season simulation: lineup optimiser + Monte Carlo (pure engine), projections loader, odds views
 src/features/lottery/            engine (pure), Sleeper mapping, zustand store, screens
 src/features/keepers/            rules engine (pure), Sleeper assembly, boards
 src/features/stats/parseTable.ts NFL.com paste parser (pure)
@@ -173,6 +174,14 @@ docs/keeper-rules.md             the league's keeper rules, codified
 - Standings are recomputed from each week's matchups (regular season only), so head-to-head
   records match whether or not the league used Sleeper's median setting. Completed seasons are
   cached in `localStorage`.
+- Playoff odds assume every team starts its best lineup from Sleeper's weekly projections
+  (scored with the league's own settings; bye, IR and taxi players sit) and play the remaining
+  schedule out 10,000 times with a fixed seed. Seeding is record, then points for, plus the
+  league-median game when Sleeper has it on. Each simulated season then plays the bracket
+  (Sleeper's standard bracket, or reseeded when the league reseeds; once the playoffs start,
+  Sleeper's own bracket with finished games locked in) for title odds. Clinched / Out are
+  exact, from a max-flow check over every remaining game. Projections come from Sleeper's
+  undocumented projections endpoint and are cached in IndexedDB for six hours.
 - The lottery is computed up-front with a recorded seed; the results poster and the published
   draft order both show it, so anyone can replay and verify the draw.
 - Manual stats are keyed by definition, season, week (0 = season total) and subject, so pasting

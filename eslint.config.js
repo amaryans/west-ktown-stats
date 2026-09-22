@@ -14,7 +14,11 @@ export default tseslint.config(
   },
   {
     // Engines stay pure: no React, no network, no ambient randomness or clock.
-    files: ['src/features/lottery/engine/**/*.ts', 'src/features/keepers/engine/**/*.ts'],
+    files: [
+      'src/features/lottery/engine/**/*.ts',
+      'src/features/keepers/engine/**/*.ts',
+      'src/features/predictions/engine/**/*.ts',
+    ],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -53,6 +57,7 @@ export default tseslint.config(
       'src/features/lottery/data/**/*.ts',
       'src/features/keepers/api/**/*.ts',
       'src/features/parlay/lib/**/*.ts',
+      'src/features/predictions/{loader,format}.ts',
     ],
     rules: {
       'no-restricted-imports': [
