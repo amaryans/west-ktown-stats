@@ -109,6 +109,46 @@ describe('simulateSeason', () => {
   })
 })
 
+describe('six-team playoffs', () => {
+  it('gives byes to the top two seeds and crowns a champion in the third round', () => {
+    const teams = Array.from({ length: 10 }, (_, i) => ({
+      rosterId: i + 1,
+      wins: 10 - i,
+      losses: i,
+      ties: 0,
+      pointsFor: 1500 - i * 10,
+    }))
+    const forecasts: SimulationInput['forecasts'] = {}
+    for (const t of teams)
+      for (const week of [15, 16, 17])
+        forecasts[forecastKey(t.rosterId, week)] = { mean: 120 - t.rosterId, sd: 15 }
+    const r = simulateSeason({
+      teams,
+      schedule: [],
+      weeks: [],
+      forecasts,
+      playoffTeams: 6,
+      medianGame: false,
+      runs: 400,
+      seed: 3,
+      playoffs: { rounds: [[15], [16], [17]], reseed: false },
+    })
+    expect(r.byes).toBe(2)
+    expect(r.rounds).toBe(3)
+    const byId = new Map(r.teams.map((t) => [t.rosterId, t]))
+    expect(byId.get(1)?.bye).toBe(1)
+    expect(byId.get(2)?.bye).toBe(1)
+    expect(byId.get(3)?.bye).toBe(0)
+    expect(byId.get(7)?.playoff).toBe(0)
+    expect(byId.get(7)?.champion).toBe(0)
+    // Seeds 1 and 2 skip round one, so they reach at least the semifinal every time.
+    expect(byId.get(1)?.semifinal).toBe(1)
+    expect(byId.get(2)?.semifinal).toBe(1)
+    expect(r.teams.reduce((sum, t) => sum + t.champion, 0)).toBeCloseTo(1)
+    expect(r.teams.reduce((sum, t) => sum + t.final, 0)).toBeCloseTo(2)
+  })
+})
+
 describe('winProbability', () => {
   it('is symmetric and favours the higher mean', () => {
     const a = { mean: 120, sd: 20 }

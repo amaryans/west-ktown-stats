@@ -15,6 +15,7 @@ import {
   lastRegularSeasonWeek,
   loadPredictionData,
   pairingsFor,
+  playoffRoundWeeks,
   scoreProjections,
   simulationInput,
 } from './loader.ts'
@@ -144,6 +145,14 @@ describe('helpers', () => {
     expect(currentWeekFor(league, { ...state, season_type: 'post' }, 3)).toBe(4)
     expect(currentWeekFor(league, { ...state, season: '2027' }, 3)).toBe(4)
     expect(currentWeekFor(league, null, 3)).toBe(1)
+  })
+
+  it('lays a six-team bracket over weeks 15 to 17 with the final in week 17', () => {
+    expect(playoffRoundWeeks(6, 15, 0)).toEqual([[15], [16], [17]])
+    // A two-week final still fits the calendar.
+    expect(playoffRoundWeeks(6, 15, 1)).toEqual([[15], [16], [17, 18]])
+    // Two weeks per round would run to week 20, so it falls back to one week per round.
+    expect(playoffRoundWeeks(6, 15, 2)).toEqual([[15], [16], [17]])
   })
 
   it('pairs matchups into games', () => {

@@ -133,6 +133,24 @@ export function currentWeekFor(
   return lastRegularWeek + 1
 }
 
+/** Last week of the NFL regular season Sleeper can score. */
+export const LAST_NFL_WEEK = 18
+
+/**
+ * Weeks per playoff round. Sleeper's `playoff_round_type` is undocumented, so
+ * a reading that would push the final past the NFL calendar falls back to
+ * one week per round, which is what fits (e.g. six teams over weeks 15–17).
+ */
+export function playoffRoundWeeks(
+  playoffTeams: number,
+  firstWeek: number,
+  roundType: number,
+): number[][] {
+  const rounds = roundWeeks(playoffTeams, firstWeek, roundType, LAST_NFL_WEEK)
+  if (rounds.every((r) => r.length > 0)) return rounds
+  return roundWeeks(playoffTeams, firstWeek, 0, LAST_NFL_WEEK)
+}
+
 /** Head-to-head pairings from a week's matchups (byes and malformed pairs skipped). */
 export function pairingsFor(week: number, matchups: readonly SleeperMatchup[]): ScheduledGame[] {
   const sides = new Map<number, number[]>()
@@ -257,7 +275,7 @@ export async function loadPredictionData(
       : null
 
   const playoffTeams = num(league.settings?.playoff_teams) || Math.min(6, rosters.length)
-  const playoffRounds = roundWeeks(
+  const playoffRounds = playoffRoundWeeks(
     playoffTeams,
     lastRegularWeek + 1,
     num(league.settings?.playoff_round_type),
