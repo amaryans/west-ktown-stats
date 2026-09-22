@@ -898,6 +898,24 @@
     color: var(--muted);
     font-size: 0.85rem;
   }
+  .odds-table {
+    width: max-content;
+    min-width: 100%;
+  }
+  .odds-table td,
+  .odds-table th {
+    white-space: nowrap;
+  }
+  .odds-table .col-team {
+    width: auto;
+    min-width: 14rem;
+  }
+  .odds-table tr.is-me td {
+    box-shadow: none;
+  }
+  .odds-table tr.is-me td:first-child {
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
   .matchups {
     list-style: none;
     margin: 0;
@@ -1000,6 +1018,132 @@
   .status-numbers {
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
+  }
+  .odds-cards {
+    display: none;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .odds-card {
+    padding: 0.85rem 0 0.9rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .odds-card.is-me {
+    box-shadow: inset 3px 0 0 var(--accent);
+    padding-left: 0.6rem;
+  }
+  .odds-card__head {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .odds-card__rank {
+    flex: none;
+    width: 1.6rem;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--muted);
+  }
+  .odds-block {
+    background: var(--bg-elev-2);
+    border-radius: 10px;
+    padding: 0.55rem 0.65rem 0.6rem;
+  }
+  .odds-block__title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin-bottom: 0.4rem;
+  }
+  .odds-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr));
+    gap: 0.35rem;
+  }
+  .odds-stats--odds {
+    grid-template-columns: repeat(auto-fit, minmax(4.2rem, 1fr));
+  }
+  .odds-stats + .odds-stats {
+    margin-top: 0.35rem;
+  }
+  .odds-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+    padding: 0.3rem 0.45rem;
+    border-radius: 6px;
+    background: var(--bg);
+    min-width: 0;
+  }
+  .odds-stat--wide {
+    grid-column: 1 / -1;
+  }
+  .odds-stat__label {
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .odds-stat__value {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .odds-stat--strong .odds-stat__value {
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+  .odds-stat__hint {
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+  .odds-seeds {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: 0.3rem;
+    align-items: end;
+  }
+  .odds-seed {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .odds-seed__bar {
+    display: flex;
+    align-items: flex-end;
+    width: 100%;
+    height: 2.4rem;
+    background: var(--bg);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .odds-seed__bar > span {
+    display: block;
+    width: 100%;
+    background: var(--accent);
+    opacity: 0.75;
+    border-radius: 4px 4px 0 0;
+  }
+  .odds-seed__pct {
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+  .odds-seed__label {
+    font-size: 0.68rem;
+    color: var(--muted);
   }
   .proj-grid th.is-playoff {
     border-left: 2px solid var(--border);
@@ -1419,10 +1563,25 @@
   }
   .sort-select {
     display: inline-flex;
+    max-width: 100%;
+  }
+  .sort-select select {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
   }
   .standings-sort {
     display: block;
     padding: 0 16px 10px;
+  }
+  .card .standings-sort {
+    padding: 0 0 10px;
+  }
+  .odds-table-wrap {
+    display: none;
+  }
+  .odds-cards {
+    display: block;
   }
   .standings,
   .standings tbody,
