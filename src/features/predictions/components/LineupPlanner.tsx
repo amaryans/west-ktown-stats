@@ -15,7 +15,10 @@ export default function LineupPlanner({
   data: PredictionData
   defaultOwnerId?: string | null
 }) {
-  const weeks = data.remainingWeeks.filter((w) => !data.missingProjectionWeeks.includes(w))
+  const weeks = [...data.remainingWeeks, ...data.playoffWeeks].filter(
+    (w) => !data.missingProjectionWeeks.includes(w),
+  )
+  const isPlayoffWeek = (w: number) => w > data.lastRegularWeek
   const defaultRoster =
     data.teams.find((t) => t.ownerId && t.ownerId === defaultOwnerId)?.rosterId ??
     data.teams[0]?.rosterId ??
@@ -52,8 +55,9 @@ export default function LineupPlanner({
             <tr>
               <th scope="col">Team</th>
               {weeks.map((w) => (
-                <th key={w} scope="col" className="num">
+                <th key={w} scope="col" className={'num' + (isPlayoffWeek(w) ? ' is-playoff' : '')}>
                   Wk {w}
+                  {isPlayoffWeek(w) ? <span className="muted small"> playoffs</span> : null}
                   {data.byeTeamsByWeek[w]?.length ? (
                     <span
                       className="muted small proj-grid__byes"
@@ -154,6 +158,7 @@ export default function LineupPlanner({
               <option key={w} value={w}>
                 Week {w}
                 {w === data.inProgressWeek ? ' (in progress)' : ''}
+                {isPlayoffWeek(w) ? ' (playoffs)' : ''}
               </option>
             ))}
           </select>

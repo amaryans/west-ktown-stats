@@ -10,6 +10,7 @@ import { cacheGet, cacheSet } from '../../lib/idbCache.ts'
 import { loadPlayers, playerName, type PlayersDump } from '../../lib/players.ts'
 import { mapLimit, sleeper, userAvatarUrl, type SleeperClient } from '../../lib/sleeper/client.ts'
 import type {
+  SleeperBracketMatchup,
   SleeperLeague,
   SleeperMatchup,
   SleeperProjection,
@@ -22,7 +23,11 @@ import {
   forecastKey,
   forecastTeamWeek,
   inferByeTeams,
+  roundWeeks,
   scoreStatLine,
+  winnersPath,
+  type BracketMatchLike,
+  type PlayoffFormat,
   type ProjectedPlayer,
   type ScheduledGame,
   type SimulationInput,
@@ -71,6 +76,14 @@ export interface PredictionData {
   /** The current week when it has already started (partial scores are ignored). */
   inProgressWeek: number | null
   playoffTeams: number
+  /** Weeks each playoff round is played in (index 0 = round 1). */
+  playoffRounds: number[][]
+  /** Playoff weeks still to be played, in order. */
+  playoffWeeks: number[]
+  /** Sleeper reseeds each round (`playoff_seed_type` 1) instead of a fixed bracket. */
+  reseed: boolean
+  /** Sleeper's bracket once the playoffs have started, null before. */
+  bracket: BracketMatchLike[] | null
   medianGame: boolean
   divisions: number
   rosterPositions: string[]
@@ -243,6 +256,21 @@ export async function loadPredictionData(
       ? currentWeek
       : null
 
+  const playoffTeams = num(league.settings?.playoff_teams) || Math.min(6, rosters.length)
+  const playoffRounds = roundWeeks(
+    playoffTeams,
+    lastRegularWeek + 1,
+    num(league.settings?.playoff_round_type),
+  )
+  const playoffWeeks = playoffRounds.flat().filter((w) => w >= currentWeek)
+  const playoffsStarted = currentWeek > lastRegularWeek
+  const bracket = playoffsStarted
+    ? await client
+        .getWinnersBracket(leagueId)
+        .then((rows) => rows.map(bracketMatch))
+        .catch(() => null)
+    : null
+
   const playedMatchups: Record<number, SleeperMatchup[]> = {}
   for (const w of playedWeeks) playedMatchups[w] = matchupsByWeek[w] ?? []
   const { teams: standings } = computeSeason({ rosters, users, matchupsByWeek: playedMatchups })
@@ -251,12 +279,13 @@ export async function loadPredictionData(
   const schedule = remainingWeeks.flatMap((w) => pairingsFor(w, matchupsByWeek[w] ?? []))
 
   onProgress('Loading players and projections…')
+  const forecastWeeks = [...remainingWeeks, ...playoffWeeks]
   const [dump, ...projectionRows] = await Promise.all([
     loadPlayers(client),
-    ...remainingWeeks.map((w) => loadWeekProjections(client, league.season, w)),
+    ...forecastWeeks.map((w) => loadWeekProjections(client, league.season, w)),
   ])
   const players = projectedPlayers(rosters, dump)
-  const weeks = remainingWeeks.map((week, i) => {
+  const weeks = forecastWeeks.map((week, i) => {
     const rows = projectionRows[i]
     return {
       week,
@@ -342,7 +371,11 @@ export async function loadPredictionData(
     playedWeeks,
     remainingWeeks,
     inProgressWeek,
-    playoffTeams: num(league.settings?.playoff_teams) || Math.min(6, rosters.length),
+    playoffTeams,
+    playoffRounds,
+    playoffWeeks,
+    reseed: num(league.settings?.playoff_seed_type) === 1,
+    bracket,
     medianGame,
     divisions: num(league.settings?.divisions),
     rosterPositions,
@@ -354,6 +387,21 @@ export async function loadPredictionData(
     missingProjectionWeeks,
     byeTeamsByWeek,
     loadedAt: Date.now(),
+  }
+}
+
+/** Only the fields the bracket replay reads, so the shape stays stable. */
+function bracketMatch(row: SleeperBracketMatchup): BracketMatchLike {
+  return {
+    r: row.r,
+    m: row.m,
+    t1: row.t1 ?? null,
+    t2: row.t2 ?? null,
+    t1_from: row.t1_from ?? null,
+    t2_from: row.t2_from ?? null,
+    w: row.w ?? null,
+    l: row.l ?? null,
+    p: row.p ?? null,
   }
 }
 
@@ -376,5 +424,16 @@ export function simulationInput(data: PredictionData, runs: number, seed: number
     medianGame: data.medianGame,
     runs,
     seed,
+    playoffs: playoffFormat(data),
+  }
+}
+
+/** The bracket to play after each simulated regular season, if the rounds fit the NFL calendar. */
+export function playoffFormat(data: PredictionData): PlayoffFormat | null {
+  if (data.playoffRounds.length === 0 || data.playoffRounds.some((r) => r.length === 0)) return null
+  return {
+    rounds: data.playoffRounds,
+    reseed: data.reseed,
+    fixed: data.bracket && data.bracket.length > 0 ? winnersPath(data.bracket) : null,
   }
 }

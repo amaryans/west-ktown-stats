@@ -10,7 +10,8 @@ import { SIMULATION_RUNS, usePredictions } from './usePredictions.ts'
 export default function PlayoffOddsApp() {
   const { settings, me } = useLeague()
   const leagueId = settings?.sleeper_league_id ?? null
-  const { loading, progress, error, data, result, refresh } = usePredictions(leagueId)
+  const { loading, progress, error, data, result, clinch, strength, refresh } =
+    usePredictions(leagueId)
 
   if (!leagueId) return <NeedsLeague />
   if (error) {
@@ -83,10 +84,26 @@ export default function PlayoffOddsApp() {
         </div>
         {seasonOver ? (
           <p className="muted small">
-            The regular season is over, so these are the final seeds rather than odds.
+            The regular season is over: seeds are final and the odds are for the bracket
+            {data.bracket ? ', with games already played locked in' : ''}.
           </p>
         ) : null}
-        <OddsTable data={data} result={result} highlightOwnerId={myOwnerId} />
+        <OddsTable
+          data={data}
+          result={result}
+          clinch={clinch}
+          strength={strength}
+          highlightOwnerId={myOwnerId}
+        />
+        <p className="muted small" style={{ margin: '0.6rem 0 0' }}>
+          <strong>Status</strong>: Clinched and Out are exact, worked out from every possible
+          combination of remaining results on wins alone (a tie on wins is treated as a loss, since
+          points for cannot be known in advance). M is the magic number: wins, or losses by the team
+          that would take the last spot, that clinch a place. E is the elimination number: losses,
+          or wins by the team holding the last spot, that end the season.{' '}
+          <strong>Opp. proj.</strong> is the average projected score of the remaining opponents,
+          higher meaning a harder schedule.
+        </p>
       </section>
 
       {nextWeek !== null && (
@@ -102,7 +119,7 @@ export default function PlayoffOddsApp() {
         </section>
       )}
 
-      {!seasonOver && (
+      {(data.remainingWeeks.length > 0 || data.playoffWeeks.length > 0) && (
         <section className="card">
           <div className="card-header">
             <h2>Optimal lineups and bye weeks</h2>

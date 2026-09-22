@@ -32,6 +32,10 @@ const data: PredictionData = {
   remainingWeeks: [3, 4],
   inProgressWeek: null,
   playoffTeams: 2,
+  playoffRounds: [[5]],
+  playoffWeeks: [5],
+  reseed: false,
+  bracket: null,
   medianGame: false,
   divisions: 0,
   rosterPositions: ['QB', 'RB', 'BN'],
@@ -93,6 +97,46 @@ const data: PredictionData = {
     { week: 4, home: 2, away: 4 },
   ],
   forecasts: {
+    [forecastKey(1, 5)]: {
+      rosterId: 1,
+      week: 5,
+      mean: 30,
+      sd: 10,
+      lineup: lineup([
+        ['QB', 'qb1', 20],
+        ['RB', 'rb1', 10],
+      ]),
+    },
+    [forecastKey(2, 5)]: {
+      rosterId: 2,
+      week: 5,
+      mean: 25,
+      sd: 10,
+      lineup: lineup([
+        ['QB', 'qb2', 15],
+        ['RB', 'rb2', 10],
+      ]),
+    },
+    [forecastKey(3, 5)]: {
+      rosterId: 3,
+      week: 5,
+      mean: 22,
+      sd: 10,
+      lineup: lineup([
+        ['QB', 'qb3', 12],
+        ['RB', 'rb3', 10],
+      ]),
+    },
+    [forecastKey(4, 5)]: {
+      rosterId: 4,
+      week: 5,
+      mean: 15,
+      sd: 10,
+      lineup: lineup([
+        ['QB', 'qb4', 10],
+        ['RB', 'rb4', 5],
+      ]),
+    },
     [forecastKey(1, 3)]: {
       rosterId: 1,
       week: 3,
@@ -218,6 +262,15 @@ describe('PlayoffOddsApp', () => {
     const playoffCell = (rows[0] as HTMLElement).querySelector('td.col-strong') as HTMLElement
     expect(parseFloat(playoffCell.textContent ?? '0')).toBeGreaterThan(80)
     expect(within(rows[3] as HTMLElement).getByText('Di Nasty')).toBeInTheDocument()
+    // Title and Final odds come from the simulated bracket; Status from the exact check.
+    expect(within(odds).getByText('Title')).toBeInTheDocument()
+    expect(within(odds).getByText('Final')).toBeInTheDocument()
+    expect(within(odds).getByText('Opp. proj.')).toBeInTheDocument()
+    // 0-2 with two weeks left and two spots: Di can still reach 2-2 and tie, so not out yet.
+    expect(within(rows[3] as HTMLElement).queryByText('Out')).toBeNull()
+    expect(within(rows[3] as HTMLElement).getByText(/E/)).toBeInTheDocument()
+    // Ann's remaining opponents (Ben 25, Cy 22) average 23.5.
+    expect(within(rows[0] as HTMLElement).getByText('23.5')).toBeInTheDocument()
 
     // Week 3 matchups list both games with the favourite marked.
     expect(screen.getByRole('heading', { name: 'Week 3' })).toBeInTheDocument()

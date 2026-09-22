@@ -66,6 +66,31 @@ export interface ScheduledGame {
   away: number
 }
 
+export interface PlayoffFormat {
+  /** Weeks each round is played in (index 0 = round 1); a two-week round lists two. */
+  rounds: number[][]
+  /** Re-pair every round best seed vs worst, instead of a fixed bracket. */
+  reseed: boolean
+  /**
+   * Sleeper's bracket once the playoffs have started (roster ids, finished
+   * games carry their winner). Replaces the simulated seeding.
+   */
+  fixed?: BracketMatchLike[] | null
+}
+
+/** Sleeper's `winners_bracket` row shape, also used for generated brackets. */
+export interface BracketMatchLike {
+  r: number
+  m: number
+  t1: number | null
+  t2: number | null
+  t1_from?: { w?: number | null; l?: number | null } | null
+  t2_from?: { w?: number | null; l?: number | null } | null
+  w: number | null
+  l: number | null
+  p?: number | null
+}
+
 export interface SimulationInput {
   teams: RecordInput[]
   /** Head-to-head games for every unplayed regular-season week. */
@@ -79,6 +104,8 @@ export interface SimulationInput {
   medianGame: boolean
   runs: number
   seed: number
+  /** When given, each simulated season continues into the playoffs. */
+  playoffs?: PlayoffFormat | null
 }
 
 export interface TeamOdds {
@@ -94,6 +121,12 @@ export interface TeamOdds {
   projectedLosses: number
   projectedTies: number
   projectedPointsFor: number
+  /** Playoff outcomes; all 0 when the playoffs were not simulated. */
+  champion: number
+  /** Reached the championship game. */
+  final: number
+  /** Reached the round before the final (the playoffs themselves in a four-team bracket). */
+  semifinal: number
 }
 
 export interface SimulationResult {
@@ -101,5 +134,7 @@ export interface SimulationResult {
   seed: number
   playoffTeams: number
   byes: number
+  /** Playoff rounds simulated; 0 when the bracket was not. */
+  rounds: number
   teams: TeamOdds[]
 }

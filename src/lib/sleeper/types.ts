@@ -16,6 +16,10 @@ export interface SleeperLeague {
   settings?: {
     playoff_week_start?: number
     playoff_teams?: number
+    /** 0 = one week per round, 1 = two-week championship, 2 = two weeks per round. */
+    playoff_round_type?: number
+    /** 1 = reseed each round; otherwise a fixed bracket. */
+    playoff_seed_type?: number
     league_average_match?: number
     divisions?: number
     [key: string]: number | undefined
@@ -75,6 +79,9 @@ export interface SleeperBracketMatchup {
   t2: number | null
   w: number | null
   l: number | null
+  /** Teams still to be decided: the winner or loser of an earlier match. */
+  t1_from?: { w?: number | null; l?: number | null } | null
+  t2_from?: { w?: number | null; l?: number | null } | null
   /** Placement game marker: winner finishes in place p, loser in place p+1. */
   p?: number
 }

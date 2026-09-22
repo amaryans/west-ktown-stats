@@ -107,6 +107,18 @@ const projections: Record<number, SleeperProjection[]> = {
     proj('qb4', { pass_td: 1 }),
     proj('rb5', { rush_yd: 30 }),
   ],
+  // Week 4 is the one-week playoff.
+  4: [
+    proj('qb1', { pass_td: 2 }),
+    proj('rb1', { rush_yd: 80 }),
+    proj('rb2', { rush_yd: 60 }),
+    proj('qb2', { pass_td: 1 }),
+    proj('rb3', { rush_yd: 50 }),
+    proj('qb3', { pass_td: 3 }),
+    proj('rb4', { rush_yd: 40 }),
+    proj('qb4', { pass_td: 1 }),
+    proj('rb5', { rush_yd: 30 }),
+  ],
 }
 
 const client = {
@@ -158,7 +170,13 @@ describe('loadPredictionData', () => {
     expect(data.remainingWeeks).toEqual([2, 3])
     expect(data.inProgressWeek).toBe(2)
     expect(data.playoffTeams).toBe(2)
+    expect(data.playoffRounds).toEqual([[4]])
+    expect(data.playoffWeeks).toEqual([4])
+    expect(data.bracket).toBeNull()
+    expect(data.reseed).toBe(false)
     expect(data.missingProjectionWeeks).toEqual([])
+    // Week 4: QB 8 + RB 8 + flex rb2 6 (no receptions projected that week).
+    expect(data.forecasts[forecastKey(1, 4)]?.mean).toBe(22)
     expect(data.byeTeamsByWeek[3]).toEqual(['DET'])
 
     const ann = data.teams.find((t) => t.rosterId === 1)
@@ -194,7 +212,8 @@ describe('loadPredictionData', () => {
     } as unknown as SleeperClient
     const data = await loadPredictionData('L', () => undefined, flaky)
     expect(data.missingProjectionWeeks).toEqual([3])
-    expect(data.forecasts[forecastKey(1, 3)]?.mean).toBe(23)
+    // Average of the weeks that do have projections (23 and 22).
+    expect(data.forecasts[forecastKey(1, 3)]?.mean).toBe(22.5)
     expect(data.forecasts[forecastKey(1, 3)]?.sd).toBe(25)
   })
 
@@ -204,5 +223,35 @@ describe('loadPredictionData', () => {
     expect(result.teams).toHaveLength(4)
     const ann = result.teams.find((t) => t.rosterId === 1)
     expect(ann?.playoff).toBeGreaterThan(0.5)
+    expect(result.rounds).toBe(1)
+    expect(result.teams.reduce((sum, t) => sum + t.champion, 0)).toBeCloseTo(1)
+    expect(ann?.final).toBe(ann?.playoff)
+  })
+
+  it('replays the live bracket once the playoffs have started', async () => {
+    const inPlayoffs = {
+      ...client,
+      getState: async () => ({ ...state, week: 4 }),
+      getMatchups: async (_id: string, w: number) =>
+        w === 3
+          ? week({ 1: 110, 2: 100, 3: 105, 4: 90 }, [
+              [1, 4],
+              [2, 3],
+            ])
+          : (matchups[w] ?? []),
+      getWinnersBracket: async () => [
+        { r: 1, m: 1, t1: 1, t2: 2, w: null, l: null, p: 1 },
+        { r: 1, m: 2, t1: 3, t2: 4, w: 3, l: 4, p: 3 },
+      ],
+    } as unknown as SleeperClient
+    const data = await loadPredictionData('L', () => undefined, inPlayoffs)
+    expect(data.playedWeeks).toEqual([1, 2, 3])
+    expect(data.remainingWeeks).toEqual([])
+    expect(data.bracket).toHaveLength(2)
+    const result = simulateSeason(simulationInput(data, 200, 1))
+    const byId = new Map(result.teams.map((t) => [t.rosterId, t]))
+    expect((byId.get(1)?.champion ?? 0) + (byId.get(2)?.champion ?? 0)).toBeCloseTo(1)
+    expect(byId.get(3)?.champion).toBe(0)
+    expect(byId.get(1)?.final).toBe(1)
   })
 })

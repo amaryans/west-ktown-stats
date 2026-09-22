@@ -997,6 +997,13 @@
     font-weight: 700;
     text-align: center;
   }
+  .status-numbers {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .proj-grid th.is-playoff {
+    border-left: 2px solid var(--border);
+  }
   .lineup .roster {
     grid-template-columns: 1fr;
   }

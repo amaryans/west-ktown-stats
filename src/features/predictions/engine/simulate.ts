@@ -4,17 +4,12 @@
  * game when the league plays one) resolve from those draws. Seeding is wins,
  * then points for — this league's tiebreaker. Seeded, so results replay.
  */
+import { byeCount, playBracket, playReseededBracket, standardBracket } from './bracket.ts'
 import { forecastKey } from './forecast.ts'
 import { mulberry32, normal, normalCdf } from './rng.ts'
 import type { SimulationInput, SimulationResult, TeamOdds } from './types.ts'
 
-/** First-round byes for a bracket of `playoffTeams`: the gap up to the next power of two. */
-export function byeCount(playoffTeams: number): number {
-  if (playoffTeams <= 1) return 0
-  let size = 1
-  while (size < playoffTeams) size *= 2
-  return size - playoffTeams
-}
+export { byeCount }
 
 interface SimTeam {
   rosterId: number
@@ -75,6 +70,20 @@ export function simulateSeason(input: SimulationInput): SimulationResult {
   const tiesSum = new Array<number>(teamCount).fill(0)
   const pointsSum = new Array<number>(teamCount).fill(0)
 
+  const playoffs = input.playoffs ?? null
+  const rounds = playoffs ? playoffs.rounds.length : 0
+  const template =
+    playoffs && !playoffs.fixed && !playoffs.reseed ? standardBracket(playoffTeams) : []
+  const championCount = new Array<number>(teamCount).fill(0)
+  const finalCount = new Array<number>(teamCount).fill(0)
+  const semifinalCount = new Array<number>(teamCount).fill(0)
+  const playoffForecast = (rosterId: number, round: number) =>
+    (playoffs?.rounds[round - 1] ?? []).reduce((sum, week) => {
+      const f = input.forecasts[forecastKey(rosterId, week)] ?? { mean: 0, sd: 0 }
+      const draw = f.sd > 0 ? f.mean + f.sd * normal(random) : f.mean
+      return sum + Math.max(0, draw)
+    }, 0)
+
   const runs = Math.max(1, Math.floor(input.runs))
   const scores = new Array<number>(teamCount).fill(0)
   for (let run = 0; run < runs; run++) {
@@ -126,6 +135,35 @@ export function simulateSeason(input: SimulationInput): SimulationResult {
       tiesSum[i] = (tiesSum[i] as number) + team.ties
       pointsSum[i] = (pointsSum[i] as number) + team.pointsFor
     })
+
+    if (playoffs && rounds > 0) {
+      const seeds = order.slice(0, playoffTeams).map((t) => t.rosterId)
+      const seedOf = new Map(seeds.map((t, i) => [t, i + 1]))
+      const seedRank = (t: number) => seedOf.get(t) ?? Number.MAX_SAFE_INTEGER
+      const outcome = playoffs.fixed
+        ? playBracket(playoffs.fixed, seedRank, playoffForecast)
+        : playoffs.reseed
+          ? playReseededBracket(seeds, playoffForecast)
+          : playBracket(
+              template,
+              (seed) => seed,
+              (seed, round) => playoffForecast(seeds[seed - 1] as number, round),
+            )
+      const toRoster =
+        playoffs.fixed || playoffs.reseed
+          ? (t: number) => t
+          : (seed: number) => seeds[seed - 1] as number
+      if (outcome.champion != null) {
+        const i = index.get(toRoster(outcome.champion))
+        if (i !== undefined) championCount[i] = (championCount[i] as number) + 1
+      }
+      for (const [t, deepest] of outcome.reached) {
+        const i = index.get(toRoster(t))
+        if (i === undefined) continue
+        if (deepest >= outcome.rounds) finalCount[i] = (finalCount[i] as number) + 1
+        if (deepest >= outcome.rounds - 1) semifinalCount[i] = (semifinalCount[i] as number) + 1
+      }
+    }
   }
 
   const teams: TeamOdds[] = input.teams.map((t, i) => {
@@ -141,9 +179,12 @@ export function simulateSeason(input: SimulationInput): SimulationResult {
       projectedLosses: (lossesSum[i] as number) / runs,
       projectedTies: (tiesSum[i] as number) / runs,
       projectedPointsFor: (pointsSum[i] as number) / runs,
+      champion: (championCount[i] as number) / runs,
+      final: (finalCount[i] as number) / runs,
+      semifinal: (semifinalCount[i] as number) / runs,
     }
   })
-  return { runs, seed: input.seed, playoffTeams, byes, teams }
+  return { runs, seed: input.seed, playoffTeams, byes, rounds, teams }
 }
 
 /** Probability the first team outscores the second when both are normal draws. */
