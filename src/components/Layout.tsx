@@ -5,6 +5,7 @@ import { useLeague } from '../context/LeagueContext.tsx'
 const TABS = [
   { to: '/preseason', label: 'Preseason', icon: '🎱' },
   { to: '/stats', label: 'Stats', icon: '📊' },
+  { to: '/analytics', label: 'Analytics', icon: '📈' },
   { to: '/history', label: 'Standings', icon: '🏆' },
   { to: '/team', label: 'Team', icon: '🏈' },
   { to: '/parlay', label: 'Parlay', icon: '🎰' },
