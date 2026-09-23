@@ -7,7 +7,9 @@ import { useLeague } from '../../context/LeagueContext.tsx'
 import { weeklySeasons } from '../../features/analytics/common.ts'
 import type { LeagueHistory, SeasonStandings } from '../../features/standings/history.ts'
 import Consistency from './Consistency.tsx'
+import Execution from './Execution.tsx'
 import Luck from './Luck.tsx'
+import Positions from './Positions.tsx'
 import PowerRankings from './PowerRankings.tsx'
 import Records from './Records.tsx'
 import Rivalries from './Rivalries.tsx'
@@ -31,7 +33,7 @@ export default function AnalyticsPage() {
     <>
       <PageHeader
         title="Analytics"
-        lede="Power rankings, luck, consistency, the record book and rivalries — all worked out from every week's scores on Sleeper."
+        lede="Power rankings, luck, consistency, lineup execution, the record book and rivalries — all worked out from every week's scores on Sleeper."
       />
       <SubTabs
         label="Analytics sections"
@@ -39,6 +41,8 @@ export default function AnalyticsPage() {
           { to: '/analytics', label: 'Power rankings', end: true },
           { to: '/analytics/luck', label: 'Luck & all-play' },
           { to: '/analytics/consistency', label: 'Consistency' },
+          { to: '/analytics/execution', label: 'Execution' },
+          { to: '/analytics/positions', label: 'Positions & MVPs' },
           { to: '/analytics/records', label: 'Records & awards' },
           { to: '/analytics/rivalries', label: 'Rivalries' },
         ]}
@@ -79,6 +83,8 @@ function Sections({ history, meOwnerId }: { history: LeagueHistory; meOwnerId: s
       <Route index element={<PowerRankings {...props} />} />
       <Route path="luck" element={<Luck {...props} />} />
       <Route path="consistency" element={<Consistency {...props} />} />
+      <Route path="execution" element={<Execution {...props} />} />
+      <Route path="positions" element={<Positions {...props} />} />
       <Route path="records" element={<Records {...props} />} />
       <Route path="rivalries" element={<Rivalries {...props} />} />
       <Route path="*" element={<Navigate to="/analytics" replace />} />
