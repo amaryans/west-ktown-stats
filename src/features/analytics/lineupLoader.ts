@@ -1,11 +1,12 @@
 /**
- * What the execution pages need beyond `LeagueHistory`: every season's
- * player-level matchups (shared with keeper success, which already fetches
- * and caches them) and that season's lineup slots (`roster_positions`,
+ * What the execution, draft and moves pages need beyond `LeagueHistory`:
+ * every season's player-level matchups and draft picks (shared with keeper
+ * success, which already fetches and caches them) and that season's lineup slots (`roster_positions`,
  * cached here for completed seasons).
  */
 import { sleeper, type SleeperClient } from '../../lib/sleeper/client.ts'
 import type { SleeperMatchup } from '../../lib/sleeper/types.ts'
+import type { SuccessPick } from '../keepers/success.ts'
 import { loadKeeperSuccessRaw } from '../keepers/successLoader.ts'
 import type { LeagueHistory } from '../standings/history.ts'
 
@@ -17,6 +18,10 @@ export interface LineupSeason {
   complete: boolean
   rosterPositions: string[]
   matchupsByWeek: Record<number, SleeperMatchup[]>
+  /** The season's draft picks (keepers flagged). */
+  picks: SuccessPick[]
+  /** Why the draft could not be read, if it could not. */
+  draftError: string | null
 }
 
 async function rosterPositions(
@@ -59,6 +64,8 @@ export async function loadLineupSeasons(
         complete: raw.complete,
         rosterPositions: await rosterPositions(client, raw.leagueId, raw.complete),
         matchupsByWeek: raw.matchupsByWeek,
+        picks: raw.picks,
+        draftError: raw.draftError,
       }
     }),
   )

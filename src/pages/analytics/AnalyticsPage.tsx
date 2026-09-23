@@ -7,11 +7,14 @@ import { useLeague } from '../../context/LeagueContext.tsx'
 import { weeklySeasons } from '../../features/analytics/common.ts'
 import type { LeagueHistory, SeasonStandings } from '../../features/standings/history.ts'
 import Consistency from './Consistency.tsx'
+import Draft from './Draft.tsx'
 import Execution from './Execution.tsx'
 import Luck from './Luck.tsx'
+import Moves from './Moves.tsx'
 import Positions from './Positions.tsx'
 import PowerRankings from './PowerRankings.tsx'
 import Records from './Records.tsx'
+import ReportCard from './ReportCard.tsx'
 import Rivalries from './Rivalries.tsx'
 import { ALL } from './shared.tsx'
 
@@ -33,7 +36,7 @@ export default function AnalyticsPage() {
     <>
       <PageHeader
         title="Analytics"
-        lede="Power rankings, luck, consistency, lineup execution, the record book and rivalries — all worked out from every week's scores on Sleeper."
+        lede="Power rankings, luck, consistency, lineup execution, trades, drafts, report cards, the record book and rivalries — all worked out from every week's scores on Sleeper."
       />
       <SubTabs
         label="Analytics sections"
@@ -43,6 +46,9 @@ export default function AnalyticsPage() {
           { to: '/analytics/consistency', label: 'Consistency' },
           { to: '/analytics/execution', label: 'Execution' },
           { to: '/analytics/positions', label: 'Positions & MVPs' },
+          { to: '/analytics/moves', label: 'Trades & waivers' },
+          { to: '/analytics/draft', label: 'Draft' },
+          { to: '/analytics/report-card', label: 'Report card' },
           { to: '/analytics/records', label: 'Records & awards' },
           { to: '/analytics/rivalries', label: 'Rivalries' },
         ]}
@@ -85,6 +91,9 @@ function Sections({ history, meOwnerId }: { history: LeagueHistory; meOwnerId: s
       <Route path="consistency" element={<Consistency {...props} />} />
       <Route path="execution" element={<Execution {...props} />} />
       <Route path="positions" element={<Positions {...props} />} />
+      <Route path="moves" element={<Moves {...props} />} />
+      <Route path="draft" element={<Draft {...props} />} />
+      <Route path="report-card" element={<ReportCard {...props} />} />
       <Route path="records" element={<Records {...props} />} />
       <Route path="rivalries" element={<Rivalries {...props} />} />
       <Route path="*" element={<Navigate to="/analytics" replace />} />

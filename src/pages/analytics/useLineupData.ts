@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { errorMessage } from '../../context/LeagueContext.tsx'
 import { loadLineupSeasons, type LineupSeason } from '../../features/analytics/lineupLoader.ts'
+import { loadSeasonMoves } from '../../features/analytics/movesLoader.ts'
+import type { Move } from '../../features/analytics/transactions.ts'
 import type { LeagueHistory } from '../../features/standings/history.ts'
 import { loadPlayers, playerName, type PlayersDump } from '../../lib/players.ts'
 
@@ -48,6 +50,52 @@ export function useLineupData(history: LeagueHistory) {
   useEffect(() => {
     let active = true
     load(history, (progress) => {
+      if (active) setState((s) => (s.data ? s : { ...s, progress }))
+    })
+      .then((data) => {
+        if (active) setState({ data, progress: null, error: null })
+      })
+      .catch((err: unknown) => {
+        if (active) setState({ data: null, progress: null, error: errorMessage(err) })
+      })
+    return () => {
+      active = false
+    }
+  }, [history])
+
+  return state
+}
+
+export interface MovesData extends LineupData {
+  moves: Map<string, Move[]>
+}
+
+let sharedMoves: { history: LeagueHistory; promise: Promise<MovesData> } | null = null
+
+function loadMoves(history: LeagueHistory, onProgress: (m: string) => void): Promise<MovesData> {
+  if (sharedMoves?.history === history) return sharedMoves.promise
+  const promise = load(history, onProgress).then(async (data) => {
+    const seasons = await loadSeasonMoves(data.seasons, onProgress)
+    return { ...data, moves: new Map(seasons.map((s) => [s.leagueId, s.moves])) }
+  })
+  sharedMoves = { history, promise }
+  promise.catch(() => {
+    if (sharedMoves?.promise === promise) sharedMoves = null
+  })
+  return promise
+}
+
+/** Lineup data plus every season's transactions (trades, waivers, report card). */
+export function useMovesData(history: LeagueHistory) {
+  const [state, setState] = useState<{
+    data: MovesData | null
+    progress: string | null
+    error: string | null
+  }>({ data: null, progress: 'Reading transactions…', error: null })
+
+  useEffect(() => {
+    let active = true
+    loadMoves(history, (progress) => {
       if (active) setState((s) => (s.data ? s : { ...s, progress }))
     })
       .then((data) => {
