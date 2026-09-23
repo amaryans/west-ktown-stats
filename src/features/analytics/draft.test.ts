@@ -1,5 +1,5 @@
 import type { SleeperMatchup } from '../../lib/sleeper/types.ts'
-import { gradePicks, stealsAndBusts, summariseDrafts } from './draft.ts'
+import { draftGrades, gradePicks, stealsAndBusts, summariseDrafts } from './draft.ts'
 
 const pick = (
   playerId: string,
@@ -78,4 +78,38 @@ test('steals and early-round busts', () => {
   const { steals, busts } = stealsAndBusts(graded, 1, 1)
   expect(steals[0]?.playerId).toBe('D')
   expect(busts[0]?.playerId).toBe('A')
+})
+
+const ADP: Record<string, number> = { A: 3, B: 1, C: 10, D: 2, K: 20 }
+const adpOf = (p: { playerId: string }) => ADP[p.playerId] ?? null
+
+test('draft-day value is ADP minus pick', () => {
+  const g = gradePicks(picks, matchups, { adpOf })
+  expect(g.find((p) => p.playerId === 'A')).toMatchObject({ adp: 3, adpValue: 2 })
+  expect(g.find((p) => p.playerId === 'D')).toMatchObject({ adp: 2, adpValue: -2 })
+})
+
+test('keepers can be included at the pick they cost', () => {
+  const g = gradePicks(picks, matchups, { includeKeepers: true, adpOf })
+  expect(g.map((p) => p.playerId)).toEqual(['A', 'B', 'C', 'D', 'K'])
+  expect(g.find((p) => p.playerId === 'K')).toMatchObject({ isKeeper: true, adpValue: 15 })
+  expect(summariseDrafts(g).find((r) => r.rosterId === 1)).toMatchObject({ picks: 3, keepers: 1 })
+})
+
+test('draft-day and post-season grades can disagree', () => {
+  const grades = draftGrades(summariseDrafts(gradePicks(picks, matchups, { adpOf })))
+  // Roster 2 got value on draft day (B -1, C +7) but its class scored less.
+  expect(grades.find((g) => g.rosterId === 2)).toMatchObject({
+    preScore: 100,
+    preGrade: 'A',
+    postScore: 0,
+    postGrade: 'F',
+    change: -100,
+  })
+  expect(grades.find((g) => g.rosterId === 1)).toMatchObject({ preGrade: 'F', postGrade: 'A' })
+})
+
+test('no draft-day grade without ADP for most picks', () => {
+  const [g] = draftGrades(summariseDrafts(gradePicks(picks, matchups)))
+  expect(g).toMatchObject({ preScore: null, preGrade: '—', change: null })
 })

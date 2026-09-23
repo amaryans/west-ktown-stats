@@ -1,21 +1,27 @@
 /*
- * Draft grades: every pick judged by how the player finished.
+ * Draft grades, twice: on draft day and after the season.
  *
- * A pick's value compares where the player was taken among his position
+ * Draft day: each pick against the player's ADP (average draft position that
+ * year). ADP minus pick is positive when a player fell to the team, negative
+ * for a reach; a draft's day-one grade is its average ADP value, ranked
+ * against the league.
+ *
+ * After the season, a pick's value compares where the player was taken among his position
  * with where he finished at it (by points while on a roster in this league,
  * regular season): the 12th WR taken finishing WR3 is +9. Judging within
  * position keeps kickers and defenses, which score like mid-round receivers
  * but go last, from filling the steals list. Players with no known position
- * fall back to overall pick number minus overall finish. Keepers are left
- * out: keeper success grades those.
+ * fall back to overall pick number minus overall finish. A draft's
+ * post-season grade is the starter points its class produced for the team,
+ * ranked against the league, since that is what a draft is for.
  *
- * A manager's draft is graded on the starter points their draft class
- * produced for them against the league average, since that is what a draft
- * is for; average pick value is shown alongside.
+ * Keepers are left out unless asked for (keeper success grades them on
+ * their own); when included, a keeper counts at the pick it cost.
  */
 import type { SleeperMatchup } from '../../lib/sleeper/types.ts'
 import type { SuccessPick } from '../keepers/success.ts'
 import { mean, round } from './common.ts'
+import { grade, percentiles } from './reportCard.ts'
 
 export interface GradedPick extends SuccessPick {
   rosterId: number
@@ -32,14 +38,27 @@ export interface GradedPick extends SuccessPick {
   positionPick: number | null
   /** positionPick - positionRank (or pickNo - finishRank without a position): positive is a steal. */
   value: number
+  /** ADP that season, when known. */
+  adp: number | null
+  /** adp - pickNo: positive means the player fell to this pick. */
+  adpValue: number | null
+}
+
+export interface GradeOptions {
+  /** Count keepers (at the pick they cost). Default false. */
+  includeKeepers?: boolean
+  /** The player's ADP that season, or null when unknown. */
+  adpOf?: (pick: SuccessPick) => number | null
 }
 
 export function gradePicks(
   picks: readonly SuccessPick[],
   matchupsByWeek: Readonly<Record<number, readonly SleeperMatchup[]>>,
+  { includeKeepers = false, adpOf = () => null }: GradeOptions = {},
 ): GradedPick[] {
   const drafted = picks.filter(
-    (p): p is SuccessPick & { rosterId: number } => !p.isKeeper && p.rosterId !== null,
+    (p): p is SuccessPick & { rosterId: number } =>
+      (includeKeepers || !p.isKeeper) && p.rosterId !== null,
   )
   const points = new Map<string, number>()
   const starter = new Map<string, { points: number; starts: number }>()
@@ -87,6 +106,7 @@ export function gradePicks(
     const finishRank = finish.get(p.playerId) ?? drafted.length
     const positionRank = posFinish.get(p.playerId) ?? null
     const positionPick = posPick.get(p.playerId) ?? null
+    const adp = adpOf(p)
     return {
       ...p,
       points: round(points.get(p.playerId) ?? 0),
@@ -99,6 +119,8 @@ export function gradePicks(
         positionRank !== null && positionPick !== null
           ? positionPick - positionRank
           : p.pickNo - finishRank,
+      adp,
+      adpValue: adp === null ? null : round(adp - p.pickNo, 1),
     }
   })
 }
@@ -111,6 +133,11 @@ export interface DraftSummary {
   /** starterPoints minus the league average. */
   vsAverage: number
   avgValue: number | null
+  /** Mean ADP value over picks with a known ADP (draft-day outlook). */
+  avgAdpValue: number | null
+  /** Picks with a known ADP. */
+  adpPicks: number
+  keepers: number
   /** 1 = best draft of the season. */
   rank: number
   best: GradedPick | null
@@ -128,11 +155,16 @@ export function summariseDrafts(graded: readonly GradedPick[]): DraftSummary[] {
       if (!worst || p.value < worst.value) worst = p
     }
     const avg = mean(list.map((p) => p.value))
+    const adpValues = list.map((p) => p.adpValue).filter((v): v is number => v !== null)
+    const avgAdp = mean(adpValues)
     return {
       rosterId,
       picks: list.length,
       starterPoints: round(list.reduce((s, p) => s + p.starterPoints, 0)),
       avgValue: avg === null ? null : round(avg, 1),
+      avgAdpValue: avgAdp === null ? null : round(avgAdp, 1),
+      adpPicks: adpValues.length,
+      keepers: list.filter((p) => p.isKeeper).length,
       best,
       worst,
     }
@@ -165,4 +197,38 @@ export function stealsAndBusts<T extends GradedPick>(
       .sort((a, b) => a.value - b.value || a.points - b.points)
       .slice(0, limit),
   }
+}
+
+export interface DraftGrade {
+  rosterId: number
+  /** Draft-day percentile (0–100) from average ADP value; null without ADP. */
+  preScore: number | null
+  preGrade: string
+  /** Post-season percentile (0–100) from the class's starter points. */
+  postScore: number | null
+  postGrade: string
+  /** postScore - preScore: how the outlook changed. */
+  change: number | null
+}
+
+/**
+ * Draft-day and post-season grades for one season's drafts, each a
+ * percentile against the league. A team needs ADP for at least half its
+ * picks to get a draft-day grade.
+ */
+export function draftGrades(summaries: readonly DraftSummary[]): DraftGrade[] {
+  const pre = percentiles(summaries.map((d) => (d.adpPicks * 2 >= d.picks ? d.avgAdpValue : null)))
+  const post = percentiles(summaries.map((d) => d.starterPoints))
+  return summaries.map((d, i) => {
+    const preScore = pre[i] ?? null
+    const postScore = post[i] ?? null
+    return {
+      rosterId: d.rosterId,
+      preScore,
+      preGrade: grade(preScore),
+      postScore,
+      postGrade: grade(postScore),
+      change: preScore === null || postScore === null ? null : round(postScore - preScore, 1),
+    }
+  })
 }
