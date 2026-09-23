@@ -54,6 +54,7 @@ export default tseslint.config(
     files: [
       'src/lib/**/*.ts',
       'src/features/standings/*.ts',
+      'src/features/analytics/*.ts',
       'src/features/lottery/data/**/*.ts',
       'src/features/keepers/api/**/*.ts',
       'src/features/parlay/lib/**/*.ts',

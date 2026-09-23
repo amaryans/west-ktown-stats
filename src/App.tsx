@@ -8,6 +8,7 @@ import Login from './pages/auth/Login.tsx'
 import Signup from './pages/auth/Signup.tsx'
 import PreseasonPage from './pages/preseason/PreseasonPage.tsx'
 import StatsPage from './pages/stats/StatsPage.tsx'
+import AnalyticsPage from './pages/analytics/AnalyticsPage.tsx'
 import StandingsPage from './pages/standings/StandingsPage.tsx'
 import TeamPage from './pages/team/TeamPage.tsx'
 import SettingsPage from './pages/settings/SettingsPage.tsx'
@@ -52,6 +53,7 @@ export default function App() {
             <Route index element={<Navigate to="/history" replace />} />
             <Route path="/preseason/*" element={<PreseasonPage />} />
             <Route path="/stats/*" element={<StatsPage />} />
+            <Route path="/analytics/*" element={<AnalyticsPage />} />
             <Route path="/history/*" element={<StandingsPage />} />
             <Route path="/team" element={<TeamPage />} />
             <Route path="/parlay/*" element={<ParlayPage />} />

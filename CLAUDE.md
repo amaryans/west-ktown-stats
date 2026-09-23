@@ -22,8 +22,8 @@ npm run build        # tsc + vite build -> dist/
 
 ## Architecture
 
-- **Routing:** `HashRouter`. Tabs: `/preseason/*`, `/stats/*`, `/history/*`, `/team`, `/parlay/*`,
-  `/settings/*`.
+- **Routing:** `HashRouter`. Tabs: `/preseason/*`, `/stats/*`, `/analytics/*`, `/history/*`, `/team`,
+  `/parlay/*`, `/settings/*`.
   `App.tsx` shows Login/Signup when signed out, otherwise `Layout` (top bar + tab strip; a fixed
   bottom tab bar under 640px) around the pages.
 - **Data:** `context/AuthContext` (Supabase session) and `context/LeagueContext` (settings,
@@ -62,6 +62,13 @@ npm run build        # tsc + vite build -> dist/
     `success.ts` (pure: grades every past keeper on draft value, finish vs price and team impact;
     percentile composite) + `successLoader.ts` (drafts + weekly `players_points`, cached per
     completed season as `wkt.keepersuccess:v1:`), shown at `/stats/advanced/keepers`.
+  - `analytics/` — pure math over the team weekly results already in `history.data` (no extra
+    Sleeper requests; manual and summary-only seasons are skipped): `allplay.ts` (all-play, expected
+    wins, luck, lucky wins / unlucky losses), `power.ts` (weekly power rankings, 'balanced' or
+    'classic' Oberon formula, with movement and trend), `schedule.ts` (schedule-swap grid),
+    `consistency.ts` (sd, booms/busts, close games), `records.ts` (weekly awards, record book,
+    streaks across seasons, title droughts), `rivalry.ts` (all-time H2H ledgers). Pages live in
+    `pages/analytics/` at `/analytics/*`; the selected season is shared across its sub-tabs.
   - `stats/parseTable.ts` — parser for tables pasted from NFL.com.
   - `parlay/` — `lib/` (odds, week, board and stats math, pure), `ParlayContext.tsx` (weeks,
     legs, games + mutations, layered on `LeagueContext`), `components/`, `pages/`. Ported from
@@ -73,7 +80,7 @@ npm run build        # tsc + vite build -> dist/
 
 - `features/lottery/engine/**`, `features/keepers/engine/**` and `features/predictions/engine/**`:
   no React, no fetch, no `Math.random` / `Date.now`.
-- `src/lib/**`, `features/standings/*.ts`, `features/lottery/data/**`, `features/keepers/api/**`,
+- `src/lib/**`, `features/standings/*.ts`, `features/analytics/*.ts`, `features/lottery/data/**`, `features/keepers/api/**`,
   `features/predictions/{loader,format}.ts`: framework-free (no React or UI imports).
   `features/parlay/lib/**` follows the same rule.
 
