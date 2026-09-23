@@ -68,7 +68,12 @@ npm run build        # tsc + vite build -> dist/
     'classic' Oberon formula, with movement and trend), `schedule.ts` (schedule-swap grid),
     `consistency.ts` (sd, booms/busts, close games), `records.ts` (weekly awards, record book,
     streaks across seasons, title droughts), `rivalry.ts` (all-time H2H ledgers). Pages live in
-    `pages/analytics/` at `/analytics/*`; the selected season is shared across its sub-tabs.
+    `execution.ts` (best hindsight lineup per roster-week via the predictions engine's `assign`
+    over that season's `roster_positions`: execution %, points left on the bench, lineup losses,
+    slot-aware worst benchings; starter points by position; team MVPs) with `lineupLoader.ts`
+    (reuses keeper success's cached player-level matchups, adds `roster_positions` cached as
+    `wkt.rosterpositions:v1:`). Pages live in `pages/analytics/` at `/analytics/*`; the selected
+    season is shared across its sub-tabs.
   - `stats/parseTable.ts` — parser for tables pasted from NFL.com.
   - `parlay/` — `lib/` (odds, week, board and stats math, pure), `ParlayContext.tsx` (weeks,
     legs, games + mutations, layered on `LeagueContext`), `components/`, `pages/`. Ported from
