@@ -1503,6 +1503,44 @@
     color: var(--muted);
     margin: 0 0 0.4rem;
   }
+  .grade {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.9rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 8px;
+    font-weight: 800;
+    background: var(--bg-elev-2);
+  }
+  .grade--A {
+    background: color-mix(in srgb, var(--good) 30%, transparent);
+    color: var(--good);
+  }
+  .grade--B {
+    background: color-mix(in srgb, var(--good) 14%, transparent);
+  }
+  .grade--D {
+    background: color-mix(in srgb, var(--bad) 14%, transparent);
+  }
+  .grade--F {
+    background: color-mix(in srgb, var(--bad) 30%, transparent);
+    color: var(--bad);
+  }
+  .trade {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.7rem 0.85rem;
+  }
+  .trade__sides {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    margin-top: 0.5rem;
+  }
+  .trade__side .record-list {
+    margin: 0.4rem 0;
+  }
   .record-list {
     margin: 0;
     padding-left: 1.3rem;

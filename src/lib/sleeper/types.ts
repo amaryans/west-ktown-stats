@@ -109,6 +109,24 @@ export interface SleeperTransaction {
   adds?: Record<string, number> | null
   /** player_id → releasing roster_id. */
   drops?: Record<string, number> | null
+  transaction_id?: string | null
+  /** The week (Sleeper's "leg") the move went through. */
+  leg?: number | null
+  roster_ids?: number[] | null
+  /** Draft picks that changed hands in a trade. */
+  draft_picks?:
+    | {
+        season: string
+        round: number
+        /** Original owner of the pick. */
+        roster_id: number
+        previous_owner_id: number
+        owner_id: number
+      }[]
+    | null
+  /** FAAB that changed hands in a trade. */
+  waiver_budget?: { sender: number; receiver: number; amount: number }[] | null
+  settings?: { waiver_bid?: number | null } | null
 }
 
 export interface SleeperDraftPick {

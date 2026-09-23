@@ -72,8 +72,15 @@ npm run build        # tsc + vite build -> dist/
     over that season's `roster_positions`: execution %, points left on the bench, lineup losses,
     slot-aware worst benchings; starter points by position; team MVPs) with `lineupLoader.ts`
     (reuses keeper success's cached player-level matchups, adds `roster_positions` cached as
-    `wkt.rosterpositions:v1:`). Pages live in `pages/analytics/` at `/analytics/*`; the selected
-    season is shared across its sub-tabs.
+    `wkt.rosterpositions:v1:`). `transactions.ts` (trades, waivers and free-agent adds; each
+    rostered player-week is credited to the roster's latest acquisition of that player, so trade
+    nets and pickup value are starter points after the move) with `movesLoader.ts` (weekly
+    transactions, cached as `wkt.moves:v1:`); `draft.ts` (non-keeper picks valued as position
+    pick order minus position finish; drafts graded on the class's starter points);
+    `reportCard.ts` (draft / waivers / trades / lineups as within-season percentiles, averaged
+    into a letter grade; luck shown, not graded); `seasonReport.ts` runs them all for one season.
+    Pages live in `pages/analytics/` at `/analytics/*`; the selected season is shared across its
+    sub-tabs.
   - `stats/parseTable.ts` — parser for tables pasted from NFL.com.
   - `parlay/` — `lib/` (odds, week, board and stats math, pure), `ParlayContext.tsx` (weeks,
     legs, games + mutations, layered on `LeagueContext`), `components/`, `pages/`. Ported from
