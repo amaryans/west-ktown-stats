@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import Avatar from '../../components/Avatar.tsx'
 import { SortableTh, SortSelect, useSortable, type SortColumn } from '../../components/sortable.tsx'
 import { sleeperAvatarUrl } from '../../lib/sleeper/client.ts'
-import type { SeasonStandings } from './history.ts'
+import { isChampion, titleShared, type SeasonStandings } from './history.ts'
 import {
   formatRecord,
   rank,
@@ -24,14 +24,17 @@ export function StandingsTable({
   season,
   medianOn,
   highlightOwnerId,
+  keep,
 }: {
   season: SeasonStandings
   medianOn: boolean
   highlightOwnerId?: string | null
+  /** Rows to show (e.g. active members only); ranks still count every team. */
+  keep?: (ownerId: string | null) => boolean
 }) {
   const ranked = useMemo(
-    () => rank(season.teams, medianOn ? 'combined' : 'h2h'),
-    [season.teams, medianOn],
+    () => rank(season.teams, medianOn ? 'combined' : 'h2h').filter((t) => !keep || keep(t.ownerId)),
+    [season.teams, medianOn, keep],
   )
   const columns = useMemo<SortColumn<RankedTeam>[]>(
     () => [
@@ -96,7 +99,7 @@ export function StandingsTable({
           </thead>
           <tbody>
             {sorted.map((t) => {
-              const isChamp = season.champion != null && t.rosterId === season.champion
+              const isChamp = isChampion(season, t.rosterId)
               const isMe = Boolean(highlightOwnerId) && t.ownerId === highlightOwnerId
               const cls = [isChamp ? 'is-champion' : '', isMe ? 'is-me' : '']
                 .filter(Boolean)
@@ -113,7 +116,14 @@ export function StandingsTable({
                         <div className="team__name">
                           {t.teamName}
                           {isChamp && (
-                            <span className="trophy" title="League champion">
+                            <span
+                              className="trophy"
+                              title={
+                                titleShared(season)
+                                  ? 'Co-champion (title shared)'
+                                  : 'League champion'
+                              }
+                            >
                               🏆
                             </span>
                           )}
@@ -159,10 +169,13 @@ export function recordSortValue(line: RecordLine): number {
 export default function SeasonSection({
   season,
   highlightOwnerId,
+  keep,
 }: {
   season: SeasonStandings
   highlightOwnerId?: string | null
+  keep?: (ownerId: string | null) => boolean
 }) {
+  const shown = keep ? season.teams.filter((t) => keep(t.ownerId)).length : season.teams.length
   const [medianOn, setMedianOn] = useState(season.medianEnabled)
   // Seasons with only final totals: typed in here, or added to Sleeper without games.
   const manual = season.source === 'manual' || season.source === 'sleeper-summary'
@@ -208,11 +221,14 @@ export default function SeasonSection({
       </header>
       {played === 0 && !manual ? (
         <p className="empty">Standings will appear once the first week is scored.</p>
+      ) : shown === 0 ? (
+        <p className="empty">None of this season&apos;s managers are in the league now.</p>
       ) : (
         <StandingsTable
           season={season}
           medianOn={medianOn && !manual}
           highlightOwnerId={highlightOwnerId}
+          keep={keep}
         />
       )}
     </section>

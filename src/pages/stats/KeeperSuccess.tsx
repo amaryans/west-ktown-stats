@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Avatar from '../../components/Avatar.tsx'
+import { ActiveOnlyToggle, useActiveFilter } from '../../components/ActiveOnly.tsx'
 import HistoryStatus from '../../components/HistoryStatus.tsx'
 import { SortableTh, useSortable, type SortColumn } from '../../components/sortable.tsx'
 import { errorMessage, useLeague } from '../../context/LeagueContext.tsx'
@@ -105,7 +106,12 @@ export default function KeeperSuccess() {
     return scoreKeepers(all)
   }, [raw.seasons, seasonsUsed, keeperLists, adpBySeason, players])
 
-  const managers = useMemo(() => managerRecords(outcomes), [outcomes])
+  // Scores are percentiles over every keeper; "active members only" just hides rows.
+  const { keep } = useActiveFilter()
+  const managers = useMemo(
+    () => managerRecords(outcomes).filter((m) => keep(m.ownerId)),
+    [outcomes, keep],
+  )
 
   const seasonsWithKeepers = useMemo(
     () => [...new Set(outcomes.map((o) => o.season))].sort((a, b) => b - a),
@@ -122,14 +128,18 @@ export default function KeeperSuccess() {
     () =>
       outcomes.filter(
         (o) =>
+          keep(o.ownerId) &&
           (seasonFilter === 'all' || o.season === seasonFilter) &&
           (managerFilter === 'all' || (o.ownerId ?? `roster:${o.rosterId}`) === managerFilter),
       ),
-    [outcomes, seasonFilter, managerFilter],
+    [outcomes, seasonFilter, managerFilter, keep],
   )
 
   const bestKeeper = outcomes.reduce<KeeperOutcome | null>(
-    (best, o) => (o.score !== null && (best === null || o.score > (best.score ?? -1)) ? o : best),
+    (best, o) =>
+      keep(o.ownerId) && o.score !== null && (best === null || o.score > (best.score ?? -1))
+        ? o
+        : best,
     null,
   )
   const topManager = managers[0] ?? null
@@ -184,6 +194,9 @@ export default function KeeperSuccess() {
 
           {outcomes.length > 0 && (
             <>
+              <div className="row end">
+                <ActiveOnlyToggle />
+              </div>
               <div className="stat-tiles">
                 <div className="tile">
                   <div className="label">Keepers judged</div>

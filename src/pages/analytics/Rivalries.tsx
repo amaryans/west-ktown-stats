@@ -6,16 +6,20 @@ import { formatRecord, winPct } from '../../features/standings/standings.ts'
 import type { AnalyticsProps } from './AnalyticsPage.tsx'
 import { Explainer, fmtPct, heat, latestTeam, signClass, TeamCell } from './shared.tsx'
 
-export default function Rivalries({ history, meOwnerId }: AnalyticsProps) {
+export default function Rivalries({ history, meOwnerId, keep }: AnalyticsProps) {
   const data = useMemo(() => rivalries(history), [history])
+  const owners = useMemo(() => data.owners.filter((o) => keep(o.ownerId)), [data, keep])
   const [picked, setPicked] = useState<string | null>(null)
   const selected =
     picked ??
-    (meOwnerId && data.owners.some((o) => o.ownerId === meOwnerId) ? meOwnerId : null) ??
-    data.owners[0]?.ownerId ??
+    (meOwnerId && owners.some((o) => o.ownerId === meOwnerId) ? meOwnerId : null) ??
+    owners[0]?.ownerId ??
     null
 
-  const ledgers = useMemo(() => data.all.filter((l) => l.ownerId === selected), [data, selected])
+  const ledgers = useMemo(
+    () => data.all.filter((l) => l.ownerId === selected && keep(l.opponentId)),
+    [data, selected, keep],
+  )
   const names = useMemo(() => new Map(data.owners.map((o) => [o.ownerId, o.ownerName])), [data])
 
   const columns = useMemo<SortColumn<Ledger>[]>(
@@ -38,7 +42,7 @@ export default function Rivalries({ history, meOwnerId }: AnalyticsProps) {
   )
   const { sort, toggle, sorted } = useSortable(ledgers, columns, { key: 'pct', dir: 'desc' })
 
-  if (data.owners.length < 2) {
+  if (owners.length < 2) {
     return <div className="card empty">Not enough head-to-head games yet.</div>
   }
 
@@ -54,7 +58,7 @@ export default function Rivalries({ history, meOwnerId }: AnalyticsProps) {
             <thead>
               <tr>
                 <th>Manager</th>
-                {data.owners.map((o) => (
+                {owners.map((o) => (
                   <th key={o.ownerId} className="num matrix__col" title={o.ownerName}>
                     {o.ownerName.slice(0, 5)}
                   </th>
@@ -62,14 +66,14 @@ export default function Rivalries({ history, meOwnerId }: AnalyticsProps) {
               </tr>
             </thead>
             <tbody>
-              {data.owners.map((a) => (
+              {owners.map((a) => (
                 <tr key={a.ownerId} className={a.ownerId === meOwnerId ? 'me' : undefined}>
                   <td>
                     <button type="button" className="link" onClick={() => setPicked(a.ownerId)}>
                       {a.ownerName}
                     </button>
                   </td>
-                  {data.owners.map((b) => {
+                  {owners.map((b) => {
                     if (a.ownerId === b.ownerId)
                       return <td key={b.ownerId} className="matrix__self" />
                     const l = data.ledger(a.ownerId, b.ownerId)
@@ -112,7 +116,7 @@ export default function Rivalries({ history, meOwnerId }: AnalyticsProps) {
                 value={selected}
                 onChange={(e) => setPicked(e.target.value)}
               >
-                {data.owners.map((o) => (
+                {owners.map((o) => (
                   <option key={o.ownerId} value={o.ownerId}>
                     {o.ownerName}
                   </option>

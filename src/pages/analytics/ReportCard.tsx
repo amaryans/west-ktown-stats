@@ -54,6 +54,7 @@ function ReportCardView({
   setScope,
   season,
   meOwnerId,
+  keep,
   data,
 }: AnalyticsProps & { data: MovesData }) {
   const all = scope === ALL
@@ -120,7 +121,8 @@ function ReportCardView({
     ],
     [],
   )
-  const { sort, toggle, sorted } = useSortable(rows, columns, { key: 'grade', dir: 'desc' })
+  const shown = useMemo(() => rows.filter((r) => keep(r.team?.ownerId)), [rows, keep])
+  const { sort, toggle, sorted } = useSortable(shown, columns, { key: 'grade', dir: 'desc' })
 
   return (
     <div className="card">

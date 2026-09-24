@@ -39,11 +39,12 @@ export function legacySeasonStandings(legacy: LegacySeason): SeasonStandings {
     weekly: [],
   }))
   const placements: Record<number, number> = {}
-  let champion: number | null = null
+  // More than one team with finish 1 means the league split the title.
+  const champions: number[] = []
   legacy.teams.forEach((t, i) => {
     if (t.playoffFinish && t.playoffFinish > 0) {
       placements[i + 1] = t.playoffFinish
-      if (t.playoffFinish === 1) champion = i + 1
+      if (t.playoffFinish === 1) champions.push(i + 1)
     }
   })
   return {
@@ -54,7 +55,8 @@ export function legacySeasonStandings(legacy: LegacySeason): SeasonStandings {
     medianEnabled: false,
     playoffWeekStart: null,
     weeksPlayed: [],
-    champion,
+    champion: champions[0] ?? null,
+    ...(champions.length > 1 ? { coChampions: champions } : {}),
     placements,
     teams,
     complete: true,

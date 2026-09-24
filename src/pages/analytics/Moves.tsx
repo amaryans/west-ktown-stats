@@ -44,6 +44,7 @@ function MovesView({
   setScope,
   season,
   meOwnerId,
+  keep,
   data,
 }: AnalyticsProps & { data: MovesData }) {
   const all = scope === ALL
@@ -123,27 +124,39 @@ function MovesView({
     ],
     [anyFaab],
   )
-  const { sort, toggle, sorted } = useSortable(rows, columns, { key: 'pts', dir: 'desc' })
+  const shown = useMemo(() => rows.filter((r) => keep(r.team?.ownerId)), [rows, keep])
+  const { sort, toggle, sorted } = useSortable(shown, columns, { key: 'pts', dir: 'desc' })
 
   const trades = useMemo(
     () =>
       scoped
-        .flatMap((r) => r.trades.map((t) => ({ trade: t, report: r })))
+        .flatMap((r) => {
+          const teams = teamById(r.standings)
+          // A trade shows when any side is an active member.
+          return r.trades
+            .filter((t) => t.sides.some((s) => keep(teams.get(s.rosterId)?.ownerId)))
+            .map((t) => ({ trade: t, report: r }))
+        })
         .sort((a, b) =>
           all
             ? b.trade.margin - a.trade.margin
             : b.trade.week - a.trade.week || b.trade.margin - a.trade.margin,
         )
         .slice(0, all ? 10 : undefined),
-    [scoped, all],
+    [scoped, all, keep],
   )
   const topPickups = useMemo(
     () =>
       scoped
-        .flatMap((r) => r.pickups.map((p) => ({ pickup: p, report: r })))
+        .flatMap((r) => {
+          const teams = teamById(r.standings)
+          return r.pickups
+            .filter((p) => keep(teams.get(p.rosterId)?.ownerId))
+            .map((p) => ({ pickup: p, report: r }))
+        })
         .sort((a, b) => b.pickup.starterPoints - a.pickup.starterPoints)
         .slice(0, 10),
-    [scoped],
+    [scoped, keep],
   )
 
   return (

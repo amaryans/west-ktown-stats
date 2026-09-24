@@ -21,7 +21,7 @@ interface Row extends ConsistencyLine {
 const pts = (n: number | null) => (n === null ? '—' : fmtPts(n))
 
 export default function Consistency(props: AnalyticsProps) {
-  const { history, seasons, scope, setScope, season, meOwnerId } = props
+  const { history, seasons, scope, setScope, season, meOwnerId, keep } = props
   const all = scope === ALL
 
   const rows = useMemo<Row[]>(() => {
@@ -70,7 +70,8 @@ export default function Consistency(props: AnalyticsProps) {
     ],
     [],
   )
-  const { sort, toggle, sorted } = useSortable(rows, columns, { key: 'sd', dir: 'asc' })
+  const shown = useMemo(() => rows.filter((r) => keep(r.team?.ownerId)), [rows, keep])
+  const { sort, toggle, sorted } = useSortable(shown, columns, { key: 'sd', dir: 'asc' })
 
   return (
     <div className="card">
