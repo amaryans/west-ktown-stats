@@ -458,7 +458,8 @@ create table public.legacy_seasons (
   notes       text,
   -- Array of { teamName, ownerName, sleeperUserId, wins, losses, ties,
   -- pointsFor, pointsAgainst, playoffFinish } in no particular order; the
-  -- site ranks them by record, then points for.
+  -- site ranks them by record, then points for. Several teams with
+  -- playoffFinish 1 means the league split that season's title.
   teams       jsonb not null default '[]'::jsonb check (jsonb_typeof(teams) = 'array'),
   updated_by  uuid references public.profiles (id) on delete set null,
   updated_at  timestamptz not null default now()

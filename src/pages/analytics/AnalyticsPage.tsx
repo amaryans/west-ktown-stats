@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { ActiveOnlyToggle, useActiveFilter } from '../../components/ActiveOnly.tsx'
 import HistoryStatus from '../../components/HistoryStatus.tsx'
 import PageHeader from '../../components/PageHeader.tsx'
 import SubTabs from '../../components/SubTabs.tsx'
@@ -28,6 +29,13 @@ export interface AnalyticsProps {
   /** The selected season, or the newest one when "All seasons" is selected. */
   season: SeasonStandings
   meOwnerId: string | null
+  /**
+   * Whether to show a manager's row: false for managers outside the current
+   * season when "active members only" is on. Ranks, percentiles and grades
+   * are still computed against everyone; this only hides rows.
+   */
+  keep: (ownerId: string | null | undefined) => boolean
+  activeOnly: boolean
 }
 
 export default function AnalyticsPage() {
@@ -37,7 +45,9 @@ export default function AnalyticsPage() {
       <PageHeader
         title="Analytics"
         lede="Power rankings, luck, consistency, lineup execution, trades, drafts, report cards, the record book and rivalries — all worked out from every week's scores on Sleeper."
-      />
+      >
+        <ActiveOnlyToggle />
+      </PageHeader>
       <SubTabs
         label="Analytics sections"
         tabs={[
@@ -65,6 +75,7 @@ export default function AnalyticsPage() {
 
 function Sections({ history, meOwnerId }: { history: LeagueHistory; meOwnerId: string | null }) {
   const seasons = useMemo(() => weeklySeasons(history), [history])
+  const { keep, activeOnly } = useActiveFilter()
   // Default to the newest season that has games; early in a season that may be last year.
   const [chosen, setScope] = useState<string | null>(null)
   const fallback = seasons.find((s) => s.weeksPlayed.length > 0) ?? seasons[0]
@@ -83,7 +94,16 @@ function Sections({ history, meOwnerId }: { history: LeagueHistory; meOwnerId: s
     )
   }
 
-  const props: AnalyticsProps = { history, seasons, scope, setScope, season, meOwnerId }
+  const props: AnalyticsProps = {
+    history,
+    seasons,
+    scope,
+    setScope,
+    season,
+    meOwnerId,
+    keep,
+    activeOnly,
+  }
   return (
     <Routes>
       <Route index element={<PowerRankings {...props} />} />

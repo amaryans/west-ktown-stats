@@ -1,5 +1,11 @@
 import type { LegacySeason } from '../../lib/db.ts'
-import type { LeagueHistory, SeasonStandings } from './history.ts'
+import {
+  championsOf,
+  isChampion,
+  titleShared,
+  type LeagueHistory,
+  type SeasonStandings,
+} from './history.ts'
 import { careers } from './alltime.ts'
 import {
   knownManagers,
@@ -145,4 +151,52 @@ test('knownManagers lists everyone once, Sleeper accounts flagged', () => {
     'Marcus:false',
   ])
   expect(knownManagers(null)).toEqual([])
+})
+
+test('a split title makes every team with finish 1 a champion', () => {
+  const split: LegacySeason = {
+    ...legacy2019,
+    id: 'l2',
+    season: 2020,
+    teams: legacy2019.teams.map((t) =>
+      t.teamName === 'Old Guard' ? { ...t, playoffFinish: 1 } : t,
+    ),
+  }
+  const s = legacySeasonStandings(split)
+  const guard = s.teams.find((t) => t.teamName === 'Old Guard')
+  const gone = s.teams.find((t) => t.teamName === 'Long Gone')
+  expect(s.coChampions).toEqual([guard?.rosterId, gone?.rosterId].sort())
+  expect(isChampion(s, guard?.rosterId ?? -1)).toBe(true)
+  expect(isChampion(s, gone?.rosterId ?? -1)).toBe(true)
+  expect(titleShared(s)).toBe(true)
+  // A normal season has one champion and no co-champions.
+  expect(legacySeasonStandings(legacy2019).coChampions).toBeUndefined()
+  expect(championsOf(legacySeasonStandings(legacy2019))).toHaveLength(1)
+})
+
+test('shared titles count for both managers in the all-time table', () => {
+  const split: LegacySeason = {
+    ...legacy2019,
+    teams: legacy2019.teams.map((t) =>
+      t.teamName === 'Old Guard' ? { ...t, playoffFinish: 1 } : t,
+    ),
+  }
+  const history: LeagueHistory = {
+    current: {
+      league_id: 'x',
+      name: 'Test',
+      season: '2019',
+      status: 'complete',
+      avatar: null,
+      previous_league_id: null,
+      total_rosters: 3,
+    },
+    seasons: [legacySeasonStandings(split)],
+  }
+  const rows = careers(history)
+  expect(rows.find((c) => c.ownerId === 'u1')).toMatchObject({ championships: 1, sharedTitles: 1 })
+  expect(rows.find((c) => c.ownerId === legacyOwnerId('Marcus'))).toMatchObject({
+    championships: 1,
+    sharedTitles: 1,
+  })
 })

@@ -154,7 +154,7 @@ export default function LegacySeasonsSettings() {
               </thead>
               <tbody>
                 {legacySeasons.map((l) => {
-                  const champ = l.teams.find((t) => t.playoffFinish === 1)
+                  const champs = l.teams.filter((t) => t.playoffFinish === 1)
                   const clash = sleeperYears.includes(l.season)
                   return (
                     <tr key={l.id}>
@@ -167,11 +167,13 @@ export default function LegacySeasonsSettings() {
                       <td>{l.source || <span className="muted">—</span>}</td>
                       <td className="num">{l.teams.length}</td>
                       <td>
-                        {champ ? (
+                        {champs.length > 0 ? (
                           <>
-                            {champ.teamName || champ.ownerName}
-                            {champ.teamName && champ.ownerName ? (
-                              <div className="muted small">{champ.ownerName}</div>
+                            {champs.map((c) => c.teamName || c.ownerName).join(' & ')}
+                            {champs.length > 1 ? (
+                              <div className="muted small">Title split</div>
+                            ) : champs[0]?.teamName && champs[0].ownerName ? (
+                              <div className="muted small">{champs[0].ownerName}</div>
                             ) : null}
                           </>
                         ) : (
@@ -264,6 +266,10 @@ function SeasonEditor({
   const [rows, setRows] = useState<DraftTeam[]>(() =>
     initial ? initial.teams.map(rowFromTeam) : Array.from({ length: 10 }, blankRow),
   )
+  // Several teams may share finish 1 when the league split the title.
+  const [splitTitle, setSplitTitle] = useState(
+    () => (initial?.teams.filter((t) => t.playoffFinish === 1).length ?? 0) > 1,
+  )
   const [paste, setPaste] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -340,8 +346,13 @@ function SeasonEditor({
     const unnamed = teams.find((t) => !t.teamName && !t.ownerName)
     if (unnamed) return setError('Every team needs a team name or a manager.')
     const finishes = teams.map((t) => t.playoffFinish).filter((f): f is number => f !== null)
-    if (new Set(finishes).size !== finishes.length)
-      return setError('Two teams share a playoff finish.')
+    const champions = finishes.filter((f) => f === 1).length
+    const others = finishes.filter((f) => f !== 1)
+    if (new Set(others).size !== others.length) return setError('Two teams share a playoff finish.')
+    if (champions > 1 && !splitTitle)
+      return setError('More than one team has finish 1. Tick "Split title" if they shared it.')
+    if (splitTitle && champions < 2)
+      return setError('Split title is on: give every team that shared the title a finish of 1.')
     setBusy(true)
     try {
       await onSave({
@@ -427,6 +438,21 @@ function SeasonEditor({
           Use these rows
         </button>
       </details>
+
+      <label className="toggle">
+        <input
+          type="checkbox"
+          checked={splitTitle}
+          onChange={(e) => setSplitTitle(e.target.checked)}
+        />
+        <span className="toggle__track" aria-hidden="true" />
+        <span className="toggle__label">
+          Split title{' '}
+          <span className="muted small">
+            (two or more teams shared the championship: give each of them finish 1)
+          </span>
+        </span>
+      </label>
 
       <div className="table-wrap">
         <table className="legacy-editor">
@@ -552,7 +578,9 @@ function SeasonEditor({
                 {t.teamName} ({t.ownerName}) · {formatRecord(t.h2h)} · {fmtPts(t.pointsFor)} PF
                 {(() => {
                   const finish = toTeams()[t.rosterId - 1]?.playoffFinish
-                  return finish ? ` · ${finish === 1 ? 'champion' : ordinal(finish)}` : ''
+                  return finish
+                    ? ` · ${finish === 1 ? (splitTitle ? 'co-champion' : 'champion') : ordinal(finish)}`
+                    : ''
                 })()}
               </li>
             ))}

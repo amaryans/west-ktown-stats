@@ -29,6 +29,7 @@ function PositionsView({
   setScope,
   season,
   meOwnerId,
+  keep,
   data,
 }: AnalyticsProps & { data: LineupData }) {
   const teams = useMemo(() => teamById(season), [season])
@@ -52,7 +53,11 @@ function PositionsView({
     ],
     [breakdown.positions, teams],
   )
-  const { sort, toggle, sorted } = useSortable(breakdown.rows, columns, {
+  const shown = useMemo(
+    () => breakdown.rows.filter((r) => keep(teams.get(r.rosterId)?.ownerId)),
+    [breakdown.rows, teams, keep],
+  )
+  const { sort, toggle, sorted } = useSortable(shown, columns, {
     key: 'total',
     dir: 'desc',
   })
@@ -103,7 +108,9 @@ function PositionsView({
                   )
                 })}
                 <tr className="dim">
-                  <td>League average</td>
+                  <td>
+                    League average{shown.length < breakdown.rows.length ? ' (all teams)' : ''}
+                  </td>
                   {breakdown.positions.map((p) => (
                     <td key={p} className="num">
                       {fmtPts(breakdown.leagueAverage[p] ?? 0)}
@@ -137,6 +144,7 @@ function PositionsView({
         <div className="grid">
           {[...mvps]
             .map(([rosterId, top]) => ({ rosterId, top, team: teams.get(rosterId) }))
+            .filter(({ team }) => keep(team?.ownerId))
             .sort((a, b) => (b.top[0]?.share ?? 0) - (a.top[0]?.share ?? 0))
             .map(({ rosterId, top, team }) => (
               <div key={rosterId}>

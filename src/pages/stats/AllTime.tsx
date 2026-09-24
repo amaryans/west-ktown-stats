@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import Avatar from '../../components/Avatar.tsx'
 import { SortableTh, useSortable, type SortColumn } from '../../components/sortable.tsx'
+import { ActiveOnlyToggle, useActiveFilter } from '../../components/ActiveOnly.tsx'
 import HistoryStatus from '../../components/HistoryStatus.tsx'
 import { useLeague } from '../../context/LeagueContext.tsx'
 import { careers, type OwnerCareer } from '../../features/standings/alltime.ts'
@@ -10,7 +11,11 @@ import { ordinal } from '../team/TeamPage.tsx'
 
 export default function AllTime() {
   const { history, me } = useLeague()
-  const rows = useMemo(() => (history.data ? careers(history.data) : []), [history.data])
+  const { activeOnly, keep } = useActiveFilter()
+  const rows = useMemo(
+    () => (history.data ? careers(history.data).filter((c) => keep(c.ownerId)) : []),
+    [history.data, keep],
+  )
   const columns = useMemo<SortColumn<OwnerCareer>[]>(
     () => [
       { key: 'manager', label: 'Manager', get: (c) => c.ownerName },
@@ -46,10 +51,13 @@ export default function AllTime() {
         <div className="card">
           <div className="card-header">
             <h2>All-time standings</h2>
-            <span className="muted small">
-              Regular season, {history.data.seasons.length} season
-              {history.data.seasons.length === 1 ? '' : 's'} · ranked by titles, then win %
-            </span>
+            <div className="row">
+              <span className="muted small">
+                Regular season, {history.data.seasons.length} season
+                {history.data.seasons.length === 1 ? '' : 's'} · ranked by titles, then win %
+              </span>
+              <ActiveOnlyToggle />
+            </div>
           </div>
           <div className="table-wrap">
             <table>
@@ -90,6 +98,12 @@ export default function AllTime() {
                     <td className="num">{c.averageRank ?? '—'}</td>
                     <td className="num">
                       {c.championships > 0 ? `🏆 ${c.championships}` : ''}
+                      {c.sharedTitles > 0 && (
+                        <span className="muted small" title="Titles shared with another team">
+                          {' '}
+                          ({c.sharedTitles} shared)
+                        </span>
+                      )}
                       {c.championships === 0 && c.bestFinish ? (
                         <span className="muted">{ordinal(c.bestFinish)}</span>
                       ) : null}
@@ -114,8 +128,9 @@ export default function AllTime() {
           </div>
           <p className="muted small mt">
             Managers are matched across seasons by their Sleeper account. &quot;Avg rank&quot; is
-            the mean regular-season finish over completed seasons. More advanced stats are coming —
-            use &quot;Suggest a stat&quot; to ask for one.
+            the mean regular-season finish over completed seasons.
+            {activeOnly && ' Showing active members only: managers in this season.'} More advanced
+            stats are coming — use &quot;Suggest a stat&quot; to ask for one.
           </p>
         </div>
       )}
