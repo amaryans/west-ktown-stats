@@ -139,7 +139,11 @@ export default function LegTable({ week, editable = true }: { week: Week; editab
                         key={leg.odds ?? 'blank'}
                         defaultValue={leg.odds ?? ''}
                         placeholder="—"
-                        inputMode="numeric"
+                        // Full keyboard, not a number pad: iPhone number pads have no minus key.
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
                         style={{ width: '5.5rem', textAlign: 'right' }}
                         onBlur={(e) => void setOdds(leg, e.target.value)}
                         onKeyDown={(e) => {

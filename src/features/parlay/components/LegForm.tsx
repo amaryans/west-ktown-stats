@@ -170,7 +170,11 @@ export default function LegForm({
             value={odds}
             onChange={(e) => setOdds(e.target.value)}
             placeholder="-110"
-            inputMode="numeric"
+            // Full keyboard, not a number pad: iPhone number pads have no minus key.
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
           />
         </div>
       </div>
