@@ -43,16 +43,20 @@ create table public.profiles (
   -- Commissioners manage league settings, member mapping and shared data.
   -- The first account created becomes commissioner automatically.
   is_commissioner  boolean not null default false,
-  -- Sleeper user_id for this member: "claiming" a team links them to their
-  -- Sleeper roster. One member per Sleeper team.
+  -- Sleeper user_id of the team's owner: "claiming" a team links the member to
+  -- that Sleeper roster. One main member per team, plus any co-owners.
   sleeper_user_id  text,
   -- Placeholder members are Sleeper teams the commissioner listed before that
   -- person signed up, so the whole league shows up in the parlay tables. When
   -- the real person signs up (or is linked) with that Sleeper team, the
   -- placeholder's legs and weeks move to their account and it is deleted.
   is_placeholder   boolean not null default false,
+  -- Co-owners share a Sleeper team with its main member: same sleeper_user_id,
+  -- their own account and their own parlay leg. One main member per team.
+  co_owner         boolean not null default false,
   created_at       timestamptz not null default now(),
-  check (not (is_placeholder and is_commissioner))
+  check (not (is_placeholder and is_commissioner)),
+  constraint profiles_placeholder_not_co_owner check (not (is_placeholder and co_owner))
 );
 
 -- Keep profiles in step with auth.users without a foreign key (placeholders
@@ -69,7 +73,7 @@ create trigger on_auth_user_deleted
   for each row execute procedure public.handle_deleted_user();
 
 create unique index profiles_sleeper_user_idx
-  on public.profiles (sleeper_user_id) where sleeper_user_id is not null;
+  on public.profiles (sleeper_user_id) where sleeper_user_id is not null and not co_owner;
 
 -- True when the calling user is a commissioner. Security definer so it can be
 -- used inside policies and triggers without recursion into profiles' RLS.
@@ -129,13 +133,15 @@ returns boolean language sql stable as $$
 $$;
 
 -- Create a profile for each new auth user and enforce the invite code. If a
--- placeholder already holds the Sleeper team being claimed, it is merged in.
+-- placeholder already holds the Sleeper team being claimed, it is merged in
+-- (unless the new member is joining the team as a co-owner).
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare
   expected    text;
   given       text;
   sleeper     text;
+  co          boolean;
   placeholder uuid;
 begin
   select invite_code into expected from public.league_settings where id = 1;
@@ -146,16 +152,21 @@ begin
   end if;
 
   sleeper := nullif(trim(new.raw_user_meta_data ->> 'sleeper_user_id'), '');
-  select id into placeholder from public.profiles
-    where is_placeholder and sleeper_user_id = sleeper;
+  co := sleeper is not null
+    and lower(coalesce(new.raw_user_meta_data ->> 'co_owner', '')) in ('true', '1', 'yes');
+  if not co then
+    select id into placeholder from public.profiles
+      where is_placeholder and sleeper_user_id = sleeper;
+  end if;
 
-  insert into public.profiles (id, display_name, team_name, sleeper_user_id, is_commissioner)
+  insert into public.profiles (id, display_name, team_name, sleeper_user_id, co_owner, is_commissioner)
   values (
     new.id,
     coalesce(nullif(trim(new.raw_user_meta_data ->> 'display_name'), ''),
              split_part(new.email, '@', 1)),
     nullif(trim(new.raw_user_meta_data ->> 'team_name'), ''),
     case when placeholder is null then sleeper else null end,
+    co,
     -- first real member in becomes commissioner
     not exists (select 1 from public.profiles where not is_placeholder)
   );
@@ -172,7 +183,8 @@ create trigger on_auth_user_created
 
 -- Only a commissioner can grant or revoke commissioner status, and the last
 -- commissioner cannot remove themselves. Placeholders are commissioner-only
--- to edit, and claiming a Sleeper team a placeholder holds merges it in.
+-- to edit, and claiming a Sleeper team a placeholder holds merges it in
+-- (co-owners join the team without taking over its placeholder).
 create or replace function public.protect_profile()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare
@@ -196,8 +208,13 @@ begin
   if old.is_placeholder and not public.is_commissioner() then
     raise exception 'Only a commissioner can edit a placeholder member';
   end if;
-  if not new.is_placeholder and new.sleeper_user_id is not null
-     and new.sleeper_user_id is distinct from old.sleeper_user_id then
+  -- A co-owner needs a team to co-own.
+  if new.sleeper_user_id is null then
+    new.co_owner := false;
+  end if;
+  if not new.is_placeholder and not new.co_owner and new.sleeper_user_id is not null
+     and (new.sleeper_user_id is distinct from old.sleeper_user_id
+          or new.co_owner is distinct from old.co_owner) then
     select id into placeholder from public.profiles
       where is_placeholder and sleeper_user_id = new.sleeper_user_id and id <> new.id;
     if placeholder is not null then
@@ -226,11 +243,12 @@ language sql security definer stable set search_path = public as $$
   select league_name, season, sleeper_league_id from public.league_settings where id = 1;
 $$;
 
--- Sleeper teams already claimed, so the sign-up form can grey them out.
+-- Sleeper teams whose main member has signed up, so the sign-up form can
+-- offer them for co-owners instead.
 create or replace function public.claimed_sleeper_users()
 returns setof text language sql security definer stable set search_path = public as $$
   select sleeper_user_id from public.profiles
-  where sleeper_user_id is not null and not is_placeholder;
+  where sleeper_user_id is not null and not is_placeholder and not co_owner;
 $$;
 
 revoke all on function public.check_invite_code(text) from public;
@@ -365,8 +383,12 @@ begin
   locked := w.lock_at is not null and now() >= w.lock_at;
 
   if tg_op in ('INSERT', 'UPDATE') then
-    if not coalesce(allow, true) and w.loser_id is not null and new.user_id = w.loser_id then
-      raise exception 'The person placing the parlay does not pick a leg';
+    if not coalesce(allow, true) and w.loser_id is not null
+       and (new.user_id = w.loser_id or exists (
+         select 1 from public.profiles me, public.profiles loser
+         where me.id = new.user_id and loser.id = w.loser_id
+           and me.sleeper_user_id is not null and me.sleeper_user_id = loser.sleeper_user_id)) then
+      raise exception 'The team placing the parlay does not pick a leg';
     end if;
   end if;
   if tg_op = 'INSERT' and not commish and new.user_id is distinct from uid then
