@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import AddMissingMembers from '../../components/AddMissingMembers.tsx'
-import SleeperTeamSelect from '../../components/SleeperTeamSelect.tsx'
+import SleeperTeamSelect, { mainMemberOf } from '../../components/SleeperTeamSelect.tsx'
+import { coOwnerPatch } from '../../components/TeamClaimFields.tsx'
 import { errorMessage, useLeague } from '../../context/LeagueContext.tsx'
 import type { Profile } from '../../lib/db.ts'
 
@@ -25,7 +26,7 @@ export default function MembersSettings() {
       const text = errorMessage(err)
       setMemberMsg(
         text.includes('profiles_sleeper_user_idx')
-          ? 'That Sleeper team is already claimed by another member.'
+          ? 'That Sleeper team already has a main member. Tick Co-owner to add this member alongside them.'
           : text,
       )
     }
@@ -92,6 +93,9 @@ export default function MembersSettings() {
               <th>Member</th>
               <th>Team</th>
               <th>Sleeper team</th>
+              <th title="Shares the team with its main member; has their own parlay leg">
+                Co-owner
+              </th>
               <th>Commissioner</th>
             </tr>
           </thead>
@@ -111,9 +115,25 @@ export default function MembersSettings() {
                   <SleeperTeamSelect
                     id={`sleeper-${p.id}`}
                     value={p.sleeper_user_id}
-                    allowClaimed
-                    onChange={(v) => void member(p.id, { sleeper_user_id: v })}
+                    memberId={p.id}
+                    onChange={(v) =>
+                      void member(p.id, {
+                        sleeper_user_id: v,
+                        ...coOwnerPatch(p, Boolean(v) && Boolean(mainMemberOf(profiles, v, p.id))),
+                      })
+                    }
                   />
+                </td>
+                <td>
+                  {!p.is_placeholder && (
+                    <input
+                      type="checkbox"
+                      aria-label={`${p.display_name} is a co-owner`}
+                      checked={p.co_owner}
+                      disabled={!p.sleeper_user_id}
+                      onChange={(e) => void member(p.id, { co_owner: e.target.checked })}
+                    />
+                  )}
                 </td>
                 <td>
                   {p.is_placeholder ? (

@@ -1,15 +1,17 @@
 import { useState, type FormEvent } from 'react'
-import SleeperTeamSelect from '../../components/SleeperTeamSelect.tsx'
+import { mainMemberOf } from '../../components/SleeperTeamSelect.tsx'
+import TeamClaimFields, { coOwnerPatch } from '../../components/TeamClaimFields.tsx'
 import { useAuth } from '../../context/AuthContext.tsx'
 import { errorMessage, useLeague } from '../../context/LeagueContext.tsx'
 
 export default function ProfileSettings() {
   const { user } = useAuth()
-  const { me, sleeper, updateProfile } = useLeague()
+  const { me, sleeper, profiles, updateProfile } = useLeague()
   const [form, setForm] = useState({
     display_name: me?.display_name ?? '',
     team_name: me?.team_name ?? '',
     sleeper_user_id: me?.sleeper_user_id ?? null,
+    co_owner: me?.co_owner ?? false,
   })
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
@@ -23,6 +25,12 @@ export default function ProfileSettings() {
         display_name: form.display_name.trim(),
         team_name: form.team_name.trim() || null,
         sleeper_user_id: form.sleeper_user_id || null,
+        // Joining a team that already has a main member always makes you a co-owner.
+        ...coOwnerPatch(
+          me,
+          Boolean(form.sleeper_user_id) &&
+            (form.co_owner || Boolean(mainMemberOf(profiles, form.sleeper_user_id, me?.id))),
+        ),
       })
       setMsg({ ok: true, text: 'Profile saved.' })
     } catch (err) {
@@ -30,7 +38,7 @@ export default function ProfileSettings() {
       setMsg({
         ok: false,
         text: text.includes('profiles_sleeper_user_idx')
-          ? 'That Sleeper team is already claimed by another member.'
+          ? 'That Sleeper team already has a main member. Join it as a co-owner instead.'
           : text,
       })
     } finally {
@@ -76,10 +84,12 @@ export default function ProfileSettings() {
         </div>
         <div className="field">
           <label htmlFor="p-sleeper-team">Your Sleeper team</label>
-          <SleeperTeamSelect
+          <TeamClaimFields
             id="p-sleeper-team"
-            value={form.sleeper_user_id}
-            onChange={(v) => setForm((f) => ({ ...f, sleeper_user_id: v }))}
+            value={{ sleeperUserId: form.sleeper_user_id, coOwner: form.co_owner }}
+            onChange={(v) =>
+              setForm((f) => ({ ...f, sleeper_user_id: v.sleeperUserId, co_owner: v.coOwner }))
+            }
           />
           <span className="help">
             Claiming your team links you to your roster: the Team tab, highlighted standings rows,

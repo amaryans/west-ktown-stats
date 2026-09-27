@@ -4,8 +4,8 @@ import Avatar from '../../components/Avatar.tsx'
 import HistoryStatus from '../../components/HistoryStatus.tsx'
 import NeedsLeague from '../../components/NeedsLeague.tsx'
 import PageHeader from '../../components/PageHeader.tsx'
-import SleeperTeamSelect from '../../components/SleeperTeamSelect.tsx'
 import { SortableTh, useSortable, type SortColumn } from '../../components/sortable.tsx'
+import TeamClaimFields, { coOwnerPatch, type TeamClaim } from '../../components/TeamClaimFields.tsx'
 import { errorMessage, useLeague } from '../../context/LeagueContext.tsx'
 import { careers, type OwnerCareer, type OwnerSeason } from '../../features/standings/alltime.ts'
 import { fmtPts, recordSortValue } from '../../features/standings/SeasonTable.tsx'
@@ -159,17 +159,20 @@ export default function TeamPage() {
 }
 
 function ClaimTeamCard() {
-  const { updateProfile, sleeper } = useLeague()
-  const [choice, setChoice] = useState<string | null>(null)
+  const { updateProfile, sleeper, me } = useLeague()
+  const [choice, setChoice] = useState<TeamClaim>({ sleeperUserId: null, coOwner: false })
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   async function claim() {
-    if (!choice) return
+    if (!choice.sleeperUserId) return
     setBusy(true)
     setMsg(null)
     try {
-      await updateProfile({ sleeper_user_id: choice })
+      await updateProfile({
+        sleeper_user_id: choice.sleeperUserId,
+        ...coOwnerPatch(me, choice.coOwner),
+      })
     } catch (err) {
       setMsg(errorMessage(err))
     } finally {
@@ -186,12 +189,12 @@ function ClaimTeamCard() {
       </p>
       <div className="row">
         <div style={{ flex: '1 1 240px' }}>
-          <SleeperTeamSelect id="claim-team" value={choice} onChange={setChoice} />
+          <TeamClaimFields id="claim-team" value={choice} onChange={setChoice} />
         </div>
         <button
           type="button"
           className="primary"
-          disabled={!choice || busy || !sleeper.data}
+          disabled={!choice.sleeperUserId || busy || !sleeper.data}
           onClick={() => void claim()}
         >
           {busy ? 'Saving…' : 'Claim team'}
