@@ -1,3 +1,4 @@
+import { ActiveOnlyToggle, useActiveFilter } from '../../components/ActiveOnly.tsx'
 import { useLeague } from '../../context/LeagueContext.tsx'
 import HistoryStatus from '../../components/HistoryStatus.tsx'
 import SeasonSection from '../../features/standings/SeasonTable.tsx'
@@ -5,6 +6,7 @@ import SeasonSection from '../../features/standings/SeasonTable.tsx'
 /** Every season's regular-season standings. */
 export default function StandingsHistory() {
   const { history, me, sleeper } = useLeague()
+  const { activeOnly, keep } = useActiveFilter()
   const data = history.data
 
   return (
@@ -25,14 +27,17 @@ export default function StandingsHistory() {
                 </p>
               </div>
             </div>
-            <button
-              type="button"
-              className="small"
-              onClick={history.refresh}
-              disabled={history.loading}
-            >
-              Refresh
-            </button>
+            <div className="row">
+              <ActiveOnlyToggle />
+              <button
+                type="button"
+                className="small"
+                onClick={history.refresh}
+                disabled={history.loading}
+              >
+                Refresh
+              </button>
+            </div>
           </div>
           {data.seasons.length > 1 && (
             <nav className="years" aria-label="Seasons">
@@ -53,12 +58,19 @@ export default function StandingsHistory() {
             </nav>
           )}
           {data.seasons.map((s) => (
-            <SeasonSection key={s.leagueId} season={s} highlightOwnerId={me?.sleeper_user_id} />
+            <SeasonSection
+              key={s.leagueId}
+              season={s}
+              highlightOwnerId={me?.sleeper_user_id}
+              keep={activeOnly ? keep : undefined}
+            />
           ))}
           <p className="muted small">
             Records are recomputed from each week&apos;s matchups, regular season only. &quot;vs
             Median&quot; counts a win each week you score above the league median and a loss below
             it. Sort order is win percentage, then points for.
+            {activeOnly &&
+              ' Showing active members only (managers in this season); ranks still count every team.'}
           </p>
         </>
       )}

@@ -481,6 +481,9 @@ function TeamHistory({ ownerId }: { ownerId: string }) {
               <div className="label">Titles</div>
               <div className="value">
                 {career.championships > 0 ? `🏆 ${career.championships}` : '—'}
+                {career.sharedTitles > 0 && (
+                  <span className="muted small"> ({career.sharedTitles} shared)</span>
+                )}
               </div>
               <div className="sub">
                 {career.playoffAppearances} playoff finish
@@ -530,7 +533,9 @@ function TeamHistory({ ownerId }: { ownerId: string }) {
                     <td className="num">{fmtPts(s.pointsAgainst)}</td>
                     <td className="nowrap">
                       {s.champion ? (
-                        <span className="badge gold">Champion</span>
+                        <span className="badge gold">
+                          {s.sharedTitle ? 'Co-champion' : 'Champion'}
+                        </span>
                       ) : s.playoffFinish ? (
                         ordinal(s.playoffFinish)
                       ) : s.complete ? (

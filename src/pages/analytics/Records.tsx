@@ -8,6 +8,7 @@ import {
   weeklyAwards,
   type AwardKey,
   type AwardTally,
+  type RecordBook,
   type GameRecord,
   type SeasonMark,
 } from '../../features/analytics/records.ts'
@@ -26,15 +27,36 @@ const AWARDS: { key: AwardKey; icon: string; label: string; help: string }[] = [
 ]
 
 export default function Records(props: AnalyticsProps) {
-  const { history, seasons, scope, setScope, season } = props
+  const { history, seasons, scope, setScope, season, keep, activeOnly } = props
   const all = scope === ALL
   const inScope = useMemo(() => (all ? seasons : [season]), [all, seasons, season])
 
   const awards = useMemo(() => weeklyAwards(season).slice().reverse(), [season])
-  const tally = useMemo(() => tallyAwards(inScope.flatMap(weeklyAwards)), [inScope])
-  const book = useMemo(() => recordBook(inScope), [inScope])
-  const runs = useMemo(() => streaks(history), [history])
-  const dry = useMemo(() => droughts(history), [history])
+  const tally = useMemo(
+    () => tallyAwards(inScope.flatMap(weeklyAwards)).filter((r) => keep(r.key)),
+    [inScope, keep],
+  )
+  // Rank over a deep list, then keep the top five that pass the filter.
+  const book = useMemo<RecordBook>(() => {
+    const deep = recordBook(inScope, 1000)
+    const top = <T extends { team: { ownerId: string | null } }>(list: T[]) =>
+      list.filter((x) => keep(x.team.ownerId)).slice(0, 5)
+    return {
+      highestScores: top(deep.highestScores),
+      lowestScores: top(deep.lowestScores),
+      biggestBlowouts: top(deep.biggestBlowouts),
+      closestGames: top(deep.closestGames),
+      highestInLoss: top(deep.highestInLoss),
+      lowestInWin: top(deep.lowestInWin),
+      highestCombined: top(deep.highestCombined),
+      mostPointsSeason: top(deep.mostPointsSeason),
+      fewestPointsSeason: top(deep.fewestPointsSeason),
+      bestRecord: top(deep.bestRecord),
+      worstRecord: top(deep.worstRecord),
+    }
+  }, [inScope, keep])
+  const runs = useMemo(() => streaks(history).filter((s) => keep(s.ownerId)), [history, keep])
+  const dry = useMemo(() => droughts(history).filter((d) => keep(d.ownerId)), [history, keep])
 
   return (
     <>
@@ -64,7 +86,11 @@ export default function Records(props: AnalyticsProps) {
                     <td className="num">{w.week}</td>
                     {AWARDS.map((a) => (
                       <td key={a.key}>
-                        <AwardCell game={w[a.key]} kind={a.key} />
+                        <AwardCell
+                          game={w[a.key]}
+                          kind={a.key}
+                          dim={!keep(w[a.key]?.team.ownerId)}
+                        />
                       </td>
                     ))}
                   </tr>
@@ -73,8 +99,11 @@ export default function Records(props: AnalyticsProps) {
             </table>
           </div>
         )}
-        {all && (
-          <Explainer>Weekly awards show one season at a time: the newest is shown.</Explainer>
+        {(all || activeOnly) && (
+          <Explainer>
+            {all && 'Weekly awards show one season at a time: the newest is shown. '}
+            {activeOnly && 'Awards won by managers who have left the league are greyed out.'}
+          </Explainer>
         )}
       </div>
 
@@ -148,12 +177,12 @@ export default function Records(props: AnalyticsProps) {
   )
 }
 
-function AwardCell({ game, kind }: { game: GameRecord | null; kind: AwardKey }) {
+function AwardCell({ game, kind, dim }: { game: GameRecord | null; kind: AwardKey; dim: boolean }) {
   if (!game) return <span className="muted">—</span>
   const value =
     kind === 'blowout' || kind === 'closest' ? `by ${fmtPts(game.margin)}` : fmtPts(game.points)
   return (
-    <div className="nowrap">
+    <div className="nowrap" style={dim ? { opacity: 0.4 } : undefined}>
       <div>{game.team.teamName}</div>
       <div className="muted small">
         {value}

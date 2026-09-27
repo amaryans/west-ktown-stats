@@ -12,7 +12,13 @@ import { formatRecord } from '../../features/standings/standings.ts'
 import type { AnalyticsProps } from './AnalyticsPage.tsx'
 import { Explainer, fmt1, fmtPct, SeasonPicker, TeamCell } from './shared.tsx'
 
-export default function PowerRankings({ seasons, season, setScope, meOwnerId }: AnalyticsProps) {
+export default function PowerRankings({
+  seasons,
+  season,
+  setScope,
+  meOwnerId,
+  keep,
+}: AnalyticsProps) {
   const [formula, setFormula] = useState<PowerFormula>('balanced')
   const [asOf, setAsOf] = useState<{ leagueId: string; week: number } | null>(null)
   const week = asOf?.leagueId === season.leagueId ? asOf.week : Infinity
@@ -36,7 +42,11 @@ export default function PowerRankings({ seasons, season, setScope, meOwnerId }: 
     ],
     [teams],
   )
-  const { sort, toggle, sorted } = useSortable(rows, columns)
+  const shown = useMemo(
+    () => rows.filter((r) => keep(teams.get(r.rosterId)?.ownerId)),
+    [rows, teams, keep],
+  )
+  const { sort, toggle, sorted } = useSortable(shown, columns)
 
   return (
     <div className="card">

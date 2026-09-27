@@ -67,6 +67,7 @@ function DraftView({
   setScope,
   season,
   meOwnerId,
+  keep,
   data,
 }: AnalyticsProps & { data: MovesData }) {
   const all = scope === ALL
@@ -180,9 +181,13 @@ function DraftView({
     ],
     [all],
   )
-  const { sort, toggle, sorted } = useSortable(rows, columns, { key: 'post', dir: 'desc' })
+  const shown = useMemo(() => rows.filter((r) => keep(r.team?.ownerId)), [rows, keep])
+  const { sort, toggle, sorted } = useSortable(shown, columns, { key: 'post', dir: 'desc' })
 
-  const allPicks = useMemo(() => drafts.flatMap((d) => d.picks), [drafts])
+  const allPicks = useMemo(
+    () => drafts.flatMap((d) => d.picks).filter((p) => keep(p.teams.get(p.rosterId)?.ownerId)),
+    [drafts, keep],
+  )
   const { steals, busts } = useMemo(() => stealsAndBusts(allPicks, 8), [allPicks])
   const withAdp = useMemo(() => allPicks.filter((p) => p.adpValue !== null), [allPicks])
   const fell = useMemo(

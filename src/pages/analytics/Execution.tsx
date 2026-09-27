@@ -44,6 +44,7 @@ function ExecutionView({
   setScope,
   season,
   meOwnerId,
+  keep,
   data,
 }: AnalyticsProps & { data: LineupData }) {
   const all = scope === ALL
@@ -105,9 +106,10 @@ function ExecutionView({
             })),
           ),
         )
+        .filter((b) => keep(b.team?.ownerId))
         .sort((a, b) => b.cost - a.cost)
         .slice(0, 10),
-    [scoped],
+    [scoped, keep],
   )
 
   const columns = useMemo<SortColumn<Row>[]>(
@@ -154,9 +156,10 @@ function ExecutionView({
     ],
     [],
   )
-  const { sort, toggle, sorted } = useSortable(rows, columns, { key: 'eff', dir: 'desc' })
+  const shown = useMemo(() => rows.filter((r) => keep(r.team?.ownerId)), [rows, keep])
+  const { sort, toggle, sorted } = useSortable(shown, columns, { key: 'eff', dir: 'desc' })
 
-  const played = rows.filter((r) => r.efficiency !== null)
+  const played = shown.filter((r) => r.efficiency !== null)
   const best = played.reduce<Row | null>(
     (b, r) => (!b || (r.efficiency ?? 0) > (b.efficiency ?? 0) ? r : b),
     null,

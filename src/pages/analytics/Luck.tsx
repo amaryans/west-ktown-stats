@@ -26,7 +26,7 @@ interface Row extends LuckLine {
 }
 
 export default function Luck(props: AnalyticsProps) {
-  const { history, seasons, scope, setScope, season, meOwnerId } = props
+  const { history, seasons, scope, setScope, season, meOwnerId, keep } = props
   const all = scope === ALL
 
   const rows = useMemo<Row[]>(() => {
@@ -66,8 +66,9 @@ export default function Luck(props: AnalyticsProps) {
     ],
     [],
   )
-  const { sort, toggle, sorted } = useSortable(rows, columns, { key: 'luck', dir: 'desc' })
-  const played = rows.filter((r) => r.weeks > 0)
+  const shown = useMemo(() => rows.filter((r) => keep(r.team?.ownerId)), [rows, keep])
+  const { sort, toggle, sorted } = useSortable(shown, columns, { key: 'luck', dir: 'desc' })
+  const played = shown.filter((r) => r.weeks > 0)
   const luckiest = played.reduce<Row | null>((b, r) => (!b || r.luck > b.luck ? r : b), null)
   const unluckiest = played.reduce<Row | null>((b, r) => (!b || r.luck < b.luck ? r : b), null)
 
@@ -135,7 +136,7 @@ export default function Luck(props: AnalyticsProps) {
       {all ? (
         <p className="muted small">Pick a single season to see the schedule swap grid.</p>
       ) : (
-        <ScheduleSwapCard season={season} meOwnerId={meOwnerId} />
+        <ScheduleSwapCard season={season} meOwnerId={meOwnerId} keep={keep} />
       )}
     </>
   )
@@ -144,9 +145,11 @@ export default function Luck(props: AnalyticsProps) {
 function ScheduleSwapCard({
   season,
   meOwnerId,
+  keep,
 }: {
   season: SeasonStandings
   meOwnerId: string | null
+  keep: AnalyticsProps['keep']
 }) {
   const swap = useMemo(() => scheduleSwap(season), [season])
   const teams = useMemo(() => teamById(season), [season])
@@ -167,11 +170,13 @@ function ScheduleSwapCard({
           <thead>
             <tr>
               <th>Team</th>
-              {swap.rosterIds.map((id) => (
-                <th key={id} className="num matrix__col" title={teams.get(id)?.teamName}>
-                  {abbrev(teams.get(id)?.teamName)}
-                </th>
-              ))}
+              {swap.rosterIds.map((id) =>
+                !keep(teams.get(id)?.ownerId) ? null : (
+                  <th key={id} className="num matrix__col" title={teams.get(id)?.teamName}>
+                    {abbrev(teams.get(id)?.teamName)}
+                  </th>
+                ),
+              )}
               <th className="num">Avg W</th>
               <th className="num">Better / worse</th>
               <th className="num">Sched. ease</th>
@@ -180,12 +185,14 @@ function ScheduleSwapCard({
           <tbody>
             {swap.rosterIds.map((a, i) => {
               const team = teams.get(a)
+              if (!keep(team?.ownerId)) return null
               const own = swap.cells[i]?.[i]
               const s = summaries.get(a)
               return (
                 <tr key={a} className={team?.ownerId === meOwnerId ? 'me' : undefined}>
                   <td>{team && <TeamCell team={team} />}</td>
                   {swap.rosterIds.map((b, j) => {
+                    if (!keep(teams.get(b)?.ownerId)) return null
                     const line = swap.cells[i]?.[j]
                     if (!line) return <td key={b} />
                     const diff = own ? line.wins - own.wins : 0

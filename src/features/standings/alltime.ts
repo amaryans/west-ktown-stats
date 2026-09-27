@@ -2,7 +2,7 @@
  * Cross-season aggregates derived from the league history: one row per owner
  * (Sleeper user id) with career totals, and one row per owner per season.
  */
-import type { LeagueHistory, SeasonStandings } from './history.ts'
+import { isChampion, titleShared, type LeagueHistory, type SeasonStandings } from './history.ts'
 import { addLines, rank, winPct, type RecordLine, type SeasonTeam } from './standings.ts'
 
 export interface OwnerSeason {
@@ -23,6 +23,8 @@ export interface OwnerSeason {
   teamCount: number
   playoffFinish: number | null
   champion: boolean
+  /** Champion of a season whose title was split. */
+  sharedTitle: boolean
   complete: boolean
   weekly: SeasonTeam['weekly']
 }
@@ -41,6 +43,8 @@ export interface OwnerCareer {
   pointsFor: number
   pointsAgainst: number
   championships: number
+  /** Championships that were shared with another team. */
+  sharedTitles: number
   playoffAppearances: number
   bestFinish: number | null
   averageRank: number | null
@@ -75,7 +79,8 @@ export function ownerSeasons(history: LeagueHistory): Map<string, OwnerSeason[]>
         rankCombined: combinedRank.get(team.rosterId) ?? 0,
         teamCount: season.teams.length,
         playoffFinish: season.placements?.[team.rosterId] ?? null,
-        champion: season.champion === team.rosterId,
+        champion: isChampion(season, team.rosterId),
+        sharedTitle: isChampion(season, team.rosterId) && titleShared(season),
         complete: season.complete,
         weekly: team.weekly,
       })
@@ -122,6 +127,7 @@ export function careers(history: LeagueHistory): OwnerCareer[] {
       pointsFor: Math.round(played.reduce((sum, s) => sum + s.pointsFor, 0) * 100) / 100,
       pointsAgainst: Math.round(played.reduce((sum, s) => sum + s.pointsAgainst, 0) * 100) / 100,
       championships: played.filter((s) => s.champion).length,
+      sharedTitles: played.filter((s) => s.sharedTitle).length,
       playoffAppearances: finishes.length,
       bestFinish: finishes.length ? Math.min(...finishes) : null,
       averageRank: ranks.length

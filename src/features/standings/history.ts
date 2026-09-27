@@ -27,6 +27,12 @@ export interface SeasonStandings {
   weeksPlayed: number[]
   /** roster_id of the bracket winner for completed seasons. */
   champion: number | null
+  /**
+   * When the league split the title (entered by hand), every roster that
+   * shares it, `champion` included. Use `isChampion` rather than comparing
+   * against `champion` directly.
+   */
+  coChampions?: number[]
   /** roster_id -> final playoff placement (1 = champion) when the bracket is known. */
   placements: Record<number, number>
   teams: SeasonTeam[]
@@ -46,6 +52,24 @@ export interface LeagueHistory {
   current: SleeperLeague
   /** Newest season first. */
   seasons: SeasonStandings[]
+}
+
+/** Every champion of a season: one normally, several when the title was split. */
+export function championsOf(season: Pick<SeasonStandings, 'champion' | 'coChampions'>): number[] {
+  if (season.coChampions?.length) return season.coChampions
+  return season.champion === null ? [] : [season.champion]
+}
+
+export function isChampion(
+  season: Pick<SeasonStandings, 'champion' | 'coChampions'>,
+  rosterId: number,
+): boolean {
+  return championsOf(season).includes(rosterId)
+}
+
+/** True when more than one team shares the season's title. */
+export function titleShared(season: Pick<SeasonStandings, 'champion' | 'coChampions'>): boolean {
+  return championsOf(season).length > 1
 }
 
 export type ProgressFn = (message: string) => void

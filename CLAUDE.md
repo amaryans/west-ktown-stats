@@ -41,7 +41,13 @@ npm run build        # tsc + vite build -> dist/
   - `standings/` — `standings.ts` (pure math), `history.ts` (loader + localStorage cache),
     `alltime.ts` (career aggregates), `legacy.ts` (pre-Sleeper seasons from `legacy_seasons`,
     shaped like Sleeper seasons with `source: 'manual'`, merged into `history.data` by
-    `LeagueContext`; no weekly data, so no median), `SeasonTable.tsx`.
+    `LeagueContext`; no weekly data, so no median; several teams with finish 1 = a split
+    title, carried as `coChampions`, so test titles with `isChampion` / `championsOf` from
+    `history.ts`, never `season.champion ===`), `active.ts` (active members = owners in the
+    current league season), `SeasonTable.tsx`.
+  - "Active members only": one site-wide switch (`components/ActiveOnly.tsx`, stored as
+    `wkt.activeOnly`) on Standings, Stats → All-time / Keeper success and every Analytics tab.
+    It only hides rows; ranks, percentiles and grades are still computed over everyone.
   - `predictions/` — `engine/` (pure, seedable: `lineup.ts` exact optimal-lineup assignment
     over `roster_positions`, `scoring.ts` projected stats × `scoring_settings`, `forecast.ts`
     team mean/sd per week, `simulate.ts` Monte Carlo of the remaining schedule; seeding is

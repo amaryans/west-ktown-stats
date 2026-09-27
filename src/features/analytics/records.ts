@@ -1,7 +1,7 @@
 /*
  * Weekly awards, the record book, streaks and title droughts.
  */
-import type { LeagueHistory, SeasonStandings } from '../standings/history.ts'
+import { isChampion, type LeagueHistory, type SeasonStandings } from '../standings/history.ts'
 import { winPct, type RecordLine } from '../standings/standings.ts'
 import { round, teamById, teamRef, weeklySeasons, type TeamRef } from './common.ts'
 
@@ -292,7 +292,7 @@ export function droughts(history: LeagueHistory): Drought[] {
         seasonsSince: 0,
       }
       row.ownerName = t.ownerName
-      if (season.champion === t.rosterId) {
+      if (isChampion(season, t.rosterId)) {
         row.titles++
         row.lastTitle = season.season
         row.seasonsSince = 0
