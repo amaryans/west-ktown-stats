@@ -28,12 +28,32 @@ export function currentNflWeek(seasonStart: string | null | undefined): number {
   return nflWeekFor(new Date(), seasonStart)
 }
 
-/** Default lock time for a week: Thursday 8:15pm local time (TNF kickoff). */
+/** Offset of America/New_York from UTC at `at`, in minutes (-240 EDT, -300 EST). */
+function easternOffsetMinutes(at: Date): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    hourCycle: 'h23',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+  }).formatToParts(at)
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0)
+  const asUtc = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'))
+  return Math.round((asUtc - at.getTime()) / 60_000)
+}
+
+/**
+ * Default lock time for a week: Sunday 12:45pm Eastern, 15 minutes before the
+ * 1pm early slate. Fixed to Eastern time (DST-aware) whatever the viewer's zone.
+ */
 export function defaultLockAt(seasonStart: string, week: number): Date {
-  const thursday = weekStartDate(seasonStart, week)
-  thursday.setDate(thursday.getDate() + 2)
-  thursday.setHours(20, 15, 0, 0)
-  return thursday
+  const sunday = weekStartDate(seasonStart, week)
+  sunday.setDate(sunday.getDate() + 5)
+  const wallClockUtc = Date.UTC(sunday.getFullYear(), sunday.getMonth(), sunday.getDate(), 12, 45)
+  const offset = easternOffsetMinutes(new Date(wallClockUtc - 4 * 3_600_000))
+  return new Date(wallClockUtc - offset * 60_000)
 }
 
 export function weekLabel(week: number): string {
