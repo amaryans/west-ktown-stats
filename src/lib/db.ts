@@ -20,6 +20,11 @@ export interface Profile {
   sleeper_user_id: string | null
   /** A Sleeper team listed by the commissioner before that person signed up. */
   is_placeholder: boolean
+  /**
+   * Shares `sleeper_user_id`'s team with its main member, with their own account
+   * and parlay leg. Each team has one main member and any number of co-owners.
+   */
+  co_owner: boolean
   created_at: string
 }
 

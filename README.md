@@ -55,8 +55,9 @@ parlay database keeps working.
 If you already run the parlay tracker on a Supabase project, run only section 4 of the schema
 (the "Consolidated site tables") plus the `profiles_sleeper_user_idx` index and
 `claimed_sleeper_users` function from section 2, then
-`supabase/migrations/2026-09-18-placeholder-members.sql` and
-`supabase/migrations/2026-09-19-legacy-seasons.sql` — the login and parlay tables are the same.
+`supabase/migrations/2026-09-18-placeholder-members.sql`,
+`supabase/migrations/2026-09-19-legacy-seasons.sql` and
+`supabase/migrations/2026-09-27-co-owners.sql` — the login and parlay tables are the same.
 The same migrations upgrade a database created from an earlier copy of `schema.sql`.
 
 ### 2. Deploy to GitHub Pages

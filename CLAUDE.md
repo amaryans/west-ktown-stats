@@ -122,7 +122,10 @@ data, members write their own suggestions/stat entries.
 'sleeper-summary'`; the following league's `metadata.latest_league_winner_roster_id` supplies
   the champion when the bracket is empty.
 - `stat_entries` are unique per (definition, season, week, subject); week 0 = season total.
-- One member per Sleeper team (`profiles_sleeper_user_idx`). `profiles.id` is the auth user id for
+- One main member per Sleeper team (`profiles_sleeper_user_idx`, partial: `not co_owner`), plus
+  any number of co-owners (`profiles.co_owner`): same `sleeper_user_id`, their own account and
+  parlay leg. Co-owners never absorb the team's placeholder; the parlay's placer is the main
+  member; with `loser_adds_leg` off the whole losing team sits out. `profiles.id` is the auth user id for
   real members and a random uuid for placeholders (`is_placeholder`); `merge_placeholder_member`
   folds a placeholder into the account that claims its Sleeper team (on signup or profile update),
   and the house-rule triggers stand aside while `app.merging` is on.

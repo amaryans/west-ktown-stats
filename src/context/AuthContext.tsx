@@ -9,6 +9,8 @@ export interface SignUpInput {
   teamName: string
   inviteCode: string
   sleeperUserId: string | null
+  /** Joining the team as a co-owner alongside its main member. */
+  coOwner?: boolean
 }
 
 interface AuthValue {
@@ -55,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     teamName,
     inviteCode,
     sleeperUserId,
+    coOwner = false,
   }: SignUpInput) {
     const { data: ok, error: codeError } = await supabase.rpc('check_invite_code', {
       code: inviteCode,
@@ -71,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           team_name: teamName,
           invite_code: inviteCode,
           sleeper_user_id: sleeperUserId || null,
+          co_owner: Boolean(sleeperUserId) && coOwner,
         },
       },
     })

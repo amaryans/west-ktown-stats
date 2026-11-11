@@ -17,6 +17,7 @@ export default function Signup() {
     teamName: '',
     inviteCode: '',
     sleeperUserId: '',
+    coOwner: false,
   })
   const [teams, setTeams] = useState<SleeperTeam[]>([])
   const [claimed, setClaimed] = useState<Set<string>>(new Set())
@@ -48,13 +49,18 @@ export default function Signup() {
   function chooseTeam(e: ChangeEvent<HTMLSelectElement>) {
     const id = e.target.value
     const t = teams.find((x) => x.userId === id)
+    // A team whose main member has signed up can only be joined as a co-owner,
+    // and its Sleeper display name is theirs, not yours.
+    const coOwner = claimed.has(id)
     setForm((f) => ({
       ...f,
       sleeperUserId: id,
-      displayName: f.displayName || t?.displayName || '',
+      coOwner,
+      displayName: f.displayName || (coOwner ? '' : t?.displayName) || '',
       teamName: f.teamName || t?.teamName || '',
     }))
   }
+  const mustCoOwn = claimed.has(form.sleeperUserId)
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -68,6 +74,7 @@ export default function Signup() {
         teamName: form.teamName.trim(),
         inviteCode: form.inviteCode.trim(),
         sleeperUserId: form.sleeperUserId || null,
+        coOwner: form.coOwner || mustCoOwn,
       })
       if (needsConfirmation) setDone(true)
       else navigate('/')
@@ -117,16 +124,27 @@ export default function Signup() {
               {teams
                 .filter((t) => t.userId)
                 .map((t) => (
-                  <option
-                    key={t.userId}
-                    value={t.userId ?? ''}
-                    disabled={claimed.has(t.userId ?? '')}
-                  >
+                  <option key={t.userId} value={t.userId ?? ''}>
                     {teamLabel(t)}
-                    {claimed.has(t.userId ?? '') ? ' (already claimed)' : ''}
+                    {claimed.has(t.userId ?? '') ? ' (join as co-owner)' : ''}
                   </option>
                 ))}
             </select>
+            {form.sleeperUserId && (
+              <label className="checkbox-row small">
+                <input
+                  type="checkbox"
+                  checked={form.coOwner || mustCoOwn}
+                  disabled={mustCoOwn}
+                  onChange={(e) => setForm((f) => ({ ...f, coOwner: e.target.checked }))}
+                />
+                <span>
+                  {mustCoOwn
+                    ? 'This team already has a main member: you join it as a co-owner and pick your own parlay leg.'
+                    : 'I co-own this team (someone else is its main manager).'}
+                </span>
+              </label>
+            )}
             <span className="help">Links your account to your roster for the Team tab.</span>
           </div>
         )}

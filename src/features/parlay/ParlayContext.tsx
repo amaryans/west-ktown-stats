@@ -103,7 +103,9 @@ export function ParlayProvider({ children }: { children: ReactNode }) {
       if (!league) return null
       const low = await lowestScorer(league.leagueId, fantasyWeek, league.teams)
       if (!low) return null
-      const profile = profiles.find((p) => p.sleeper_user_id === low.userId) ?? null
+      // The team's main member places the parlay; co-owners share the team.
+      const onTeam = profiles.filter((p) => p.sleeper_user_id === low.userId)
+      const profile = onTeam.find((p) => !p.co_owner) ?? onTeam[0] ?? null
       return { ...low, profile }
     },
     [sleeper.data, profiles],
