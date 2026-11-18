@@ -11,7 +11,16 @@ export {
   type BracketMatch,
   type BracketOutcome,
 } from './bracket.ts'
-export { clinchStatuses, type ClinchInput, type ClinchStatus } from './clinch.ts'
+export { clinchStatuses, type ClinchInput, type ClinchStatus, type WeekResult } from './clinch.ts'
+export {
+  clinchScenarios,
+  resultKey,
+  scenarioChances,
+  type ChanceInput,
+  type ScenarioGoal,
+  type ScenarioInput,
+  type TeamScenarios,
+} from './scenarios.ts'
 export { remainingStrength, type RemainingStrength } from './schedule.ts'
 export { PLAYER_CV, MIN_TEAM_SD, forecastKey, forecastTeamWeek } from './forecast.ts'
 export {
