@@ -276,6 +276,13 @@ describe('PlayoffOddsApp', () => {
     expect(screen.getByRole('heading', { name: 'Week 3' })).toBeInTheDocument()
     expect(screen.getAllByText('vs')).toHaveLength(2)
 
+    // Clinching scenarios: a win puts Ann out of reach of everyone but Cy.
+    expect(
+      screen.getByRole('heading', { name: 'Clinching scenarios · week 3' }),
+    ).toBeInTheDocument()
+    expect(await screen.findByText('Beat Bens Bunch')).toBeInTheDocument()
+    expect(screen.getByText('Can clinch a playoff spot')).toBeInTheDocument()
+
     // The signed-in owner's team is selected by default; the lineup shows their starters.
     const teamSelect = screen.getByRole('combobox', { name: 'Team' })
     expect(teamSelect).toHaveValue('1')

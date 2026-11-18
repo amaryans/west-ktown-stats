@@ -1,5 +1,6 @@
 import NeedsLeague from '../../components/NeedsLeague.tsx'
 import { useLeague } from '../../context/LeagueContext.tsx'
+import ClinchScenarios from './components/ClinchScenarios.tsx'
 import LineupPlanner from './components/LineupPlanner.tsx'
 import OddsTable from './components/OddsTable.tsx'
 import WeekMatchups from './components/WeekMatchups.tsx'
@@ -116,6 +117,23 @@ export default function PlayoffOddsApp() {
             <span className="muted small">Projected scores and win probability</span>
           </div>
           <WeekMatchups data={data} week={nextWeek} highlightOwnerId={myOwnerId} />
+        </section>
+      )}
+
+      {nextWeek !== null && (
+        <section className="card">
+          <div className="card-header">
+            <h2>Clinching scenarios · week {nextWeek}</h2>
+            <span className="muted small">What each team needs this week</span>
+          </div>
+          <ClinchScenarios data={data} week={nextWeek} highlightOwnerId={myOwnerId} />
+          <p className="muted small" style={{ margin: '0.6rem 0 0' }}>
+            Exact, on wins alone, like Clinched and Out above: any one line is enough whatever
+            happens after this week, and a week with none of them leaves the team still alive (or
+            still not safe). Finishing level on wins never counts as clinching, since points for
+            could go either way. The percentage is the chance one of the lines happens, from this
+            week&apos;s projections.
+          </p>
         </section>
       )}
 

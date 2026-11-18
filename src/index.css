@@ -924,6 +924,48 @@
     gap: 0.5rem;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));
   }
+  .scenarios {
+    display: grid;
+    gap: 0.9rem;
+  }
+  .scenarios__title {
+    margin: 0 0 0.4rem;
+    font-size: 0.95rem;
+  }
+  .scenarios__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));
+  }
+  .scenario {
+    padding: 0.5rem 0.6rem;
+    background: var(--bg-elev-2);
+    border-radius: 10px;
+  }
+  .scenario__team {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+  .scenario__names {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  .scenario.is-me .team__name {
+    color: var(--accent);
+  }
+  .scenario__options {
+    list-style: none;
+    margin: 0.4rem 0 0;
+    padding: 0;
+    font-size: 0.9rem;
+    display: grid;
+    gap: 0.2rem;
+  }
   .matchup {
     display: grid;
     grid-template-columns: 1fr auto 1fr;

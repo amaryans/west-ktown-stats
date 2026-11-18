@@ -54,7 +54,10 @@ npm run build        # tsc + vite build -> dist/
     record then points for, plus the median game when on; `bracket.ts` standard / reseeded
     bracket in Sleeper's `winners_bracket` shape, played after each simulated season for
     title odds; `clinch.ts` exact clinch / elimination via max-flow over remaining games, plus
-    magic and elimination numbers; `schedule.ts` remaining strength of schedule), `loader.ts`
+    magic and elimination numbers, and takes `fixed` what-if results; `scenarios.ts` this week's clinching
+    scenarios: minimal sets of the week's results that clinch a bye / playoff spot or eliminate,
+    smallest first with a cheap best-case bound, plus their chance from the forecasts;
+    `schedule.ts` remaining strength of schedule), `loader.ts`
     (current season: final weeks → standings, remaining + playoff weeks → schedule +
     `getProjections`, cached in IndexedDB `projections:v1:` for 6h; Sleeper's bracket once
     the playoffs start), `usePredictions.ts`, `PlayoffOddsApp.tsx` at `/history/odds`.
