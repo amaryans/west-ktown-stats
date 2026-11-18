@@ -924,6 +924,102 @@
     gap: 0.5rem;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));
   }
+  .whatif {
+    display: grid;
+    gap: 0.75rem;
+  }
+  .whatif__controls {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .whatif__weeks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+  .whatif__games {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));
+  }
+  .whatif__game {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: start;
+    gap: 0.4rem;
+    padding: 0.5rem;
+    background: var(--bg-elev-2);
+    border-radius: 10px;
+  }
+  .whatif__game > .muted {
+    padding-top: 0.8rem;
+  }
+  .whatif__side {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    min-width: 0;
+  }
+  .whatif__pick {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0.35rem 0.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-elev);
+    color: var(--text);
+    cursor: pointer;
+    text-align: left;
+    justify-content: flex-start;
+  }
+  .whatif__pick .team__name {
+    font-size: 0.9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .whatif__pick.is-picked {
+    border-color: var(--good);
+    background: rgba(52, 211, 153, 0.15);
+  }
+  .whatif__pick:not(.is-picked):hover {
+    border-color: var(--accent);
+  }
+  .whatif__median {
+    align-self: flex-start;
+  }
+  .whatif__median.is-won {
+    color: var(--good);
+    border-color: rgba(52, 211, 153, 0.5);
+  }
+  .whatif__median.is-lost {
+    color: var(--bad);
+    border-color: rgba(248, 113, 113, 0.5);
+  }
+  .whatif__table .col-num {
+    white-space: nowrap;
+  }
+  .whatif__table .col-team {
+    min-width: 8rem;
+  }
+  .whatif__table .team__name {
+    overflow-wrap: normal;
+  }
+  .whatif__status .badge {
+    white-space: nowrap;
+  }
+  .whatif__table tr.is-changed td {
+    background: rgba(56, 189, 248, 0.08);
+  }
+  .whatif__table tr.is-me td:first-child {
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
   .scenarios {
     display: grid;
     gap: 0.9rem;

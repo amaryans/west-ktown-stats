@@ -3,6 +3,7 @@ import { useLeague } from '../../context/LeagueContext.tsx'
 import ClinchScenarios from './components/ClinchScenarios.tsx'
 import LineupPlanner from './components/LineupPlanner.tsx'
 import OddsTable from './components/OddsTable.tsx'
+import WhatIf from './components/WhatIf.tsx'
 import WeekMatchups from './components/WeekMatchups.tsx'
 import { PLAYER_CV } from './engine/index.ts'
 import { SIMULATION_RUNS, usePredictions } from './usePredictions.ts'
@@ -133,6 +134,20 @@ export default function PlayoffOddsApp() {
             still not safe). Finishing level on wins never counts as clinching, since points for
             could go either way. The percentage is the chance one of the lines happens, from this
             week&apos;s projections.
+          </p>
+        </section>
+      )}
+
+      {!seasonOver && (
+        <section className="card">
+          <div className="card-header">
+            <h2>What if…</h2>
+            <span className="muted small">Pick results and see who clinches</span>
+          </div>
+          <WhatIf data={data} highlightOwnerId={myOwnerId} />
+          <p className="muted small" style={{ margin: '0.6rem 0 0' }}>
+            Uses the same exact check as Status above: picked games count as played and every game
+            you leave open can still go either way. Changed rows are highlighted.
           </p>
         </section>
       )}

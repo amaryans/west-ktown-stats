@@ -60,7 +60,9 @@ npm run build        # tsc + vite build -> dist/
     `schedule.ts` remaining strength of schedule), `loader.ts`
     (current season: final weeks → standings, remaining + playoff weeks → schedule +
     `getProjections`, cached in IndexedDB `projections:v1:` for 6h; Sleeper's bracket once
-    the playoffs start), `usePredictions.ts`, `PlayoffOddsApp.tsx` at `/history/odds`.
+    the playoffs start), `usePredictions.ts`, `whatIf.ts` (pure: picked results → fixed results, records and
+    status before / after, favourite picks, median-count check) behind `components/WhatIf.tsx`,
+    `PlayoffOddsApp.tsx` at `/history/odds`.
     A week that has started counts as unplayed until Sleeper's NFL week moves on.
   - `lottery/` — `engine/` (pure, seedable), `data/` (mapping, seeding), `state/store.ts`
     (zustand, persisted as `ffl.v1`), `screens/`, `LotteryApp.tsx` (phase switch + step nav).

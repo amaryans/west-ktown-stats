@@ -274,7 +274,8 @@ describe('PlayoffOddsApp', () => {
 
     // Week 3 matchups list both games with the favourite marked.
     expect(screen.getByRole('heading', { name: 'Week 3' })).toBeInTheDocument()
-    expect(screen.getAllByText('vs')).toHaveLength(2)
+    const weekCard = screen.getByRole('heading', { name: 'Week 3' }).closest('section')
+    expect(within(weekCard as HTMLElement).getAllByText('vs')).toHaveLength(2)
 
     // Clinching scenarios: a win puts Ann out of reach of everyone but Cy.
     expect(
@@ -282,6 +283,17 @@ describe('PlayoffOddsApp', () => {
     ).toBeInTheDocument()
     expect(await screen.findByText('Beat Bens Bunch')).toBeInTheDocument()
     expect(screen.getByText('Can clinch a playoff spot')).toBeInTheDocument()
+
+    // What if: picking Ann over Ben clinches Ann's spot.
+    const whatIfCard = screen.getByRole('heading', { name: 'What if…' }).closest('section')
+    const card = within(whatIfCard as HTMLElement)
+    await userEvent.click(card.getAllByRole('button', { name: 'Anns Army' })[0] as HTMLElement)
+    const table = card.getByRole('table', { name: 'What-if standings' })
+    const annRow = within(table).getAllByRole('row')[1] as HTMLElement
+    expect(within(annRow).getByText('Anns Army')).toBeInTheDocument()
+    expect(within(annRow).getByText('3-0')).toBeInTheDocument()
+    expect(within(annRow).getByText('Clinched')).toBeInTheDocument()
+    expect(annRow).toHaveClass('is-changed')
 
     // The signed-in owner's team is selected by default; the lineup shows their starters.
     const teamSelect = screen.getByRole('combobox', { name: 'Team' })
